@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   FileText,
   Github,
+  Globe,
   LayoutDashboard,
   Linkedin,
   Menu,
@@ -21,6 +22,7 @@ import {
   Workflow,
   X,
 } from 'lucide-react';
+import { CURRENCIES, CURRENCY_STORAGE_KEY, detectDefaultCurrency, formatPlanPrice } from '../config/currencies';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -142,8 +144,23 @@ function Home({
   setShowSubscriptionModal,
   setSelectedPlan,
   setAuthUserType,
+  currency: propCurrency,
+  setCurrency: propSetCurrency,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [internalCurrency, setInternalCurrency] = useState(detectDefaultCurrency);
+
+  const activeCurrency = propCurrency || internalCurrency;
+  const handleCurrencySelect = (code) => {
+    if (propSetCurrency) {
+      propSetCurrency(code);
+    } else {
+      setInternalCurrency(code);
+    }
+    try {
+      localStorage.setItem(CURRENCY_STORAGE_KEY, code);
+    } catch (_) {}
+  };
 
   const openAuth = (mode, intendedUserType = null, options = {}) => {
     const { clearPlan = true } = options;
@@ -449,35 +466,66 @@ function Home({
         </section>
 
         <section id="pricing" className="section-block">
-          <div className="section-heading">
-            <p className="section-kicker">Pricing</p>
-            <h2>Simple pricing that keeps the story clear.</h2>
-            <p>One free path for candidates, and two recruiter tiers that scale without making the page feel noisy.</p>
+          <div className="section-heading section-heading--with-controls">
+            <div>
+              <p className="section-kicker">Pricing</p>
+              <h2>Simple pricing that keeps the story clear.</h2>
+              <p>One free path for candidates, and two recruiter tiers that scale without making the page feel noisy.</p>
+            </div>
+
+            <div className="currency-selector-box">
+              <div className="currency-selector-header">
+                <Globe size={14} className="text-indigo-400" />
+                <span className="currency-selector-label">Pricing Currency</span>
+              </div>
+              <div className="currency-pills-row" role="radiogroup" aria-label="Select currency">
+                {Object.values(CURRENCIES).map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={activeCurrency === c.code}
+                    className={`currency-pill ${activeCurrency === c.code ? 'currency-pill--active' : ''}`}
+                    onClick={() => handleCurrencySelect(c.code)}
+                  >
+                    <span className="currency-pill__flag">{c.flag}</span>
+                    <span className="currency-pill__code">{c.code}</span>
+                    <span className="currency-pill__symbol">({c.symbol})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="pricing-grid">
-            {PRICING.map((plan) => (
-              <article key={plan.name} className={`surface-card pricing-card ${plan.featured ? 'pricing-card--featured' : ''}`}>
-                {plan.featured && <span className="featured-badge">Most popular</span>}
-                <p className="pricing-role">{plan.role}</p>
-                <h3>{plan.name}</h3>
-                <div className="pricing-value">
-                  <strong>{plan.price}</strong>
-                  <span>{plan.note}</span>
-                </div>
-                <ul className="pricing-list">
-                  {plan.features.map((feature) => (
-                    <li key={feature}>
-                      <CheckCheck size={15} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <button type="button" className={plan.featured ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => handlePlanClick(plan)}>
-                  {plan.cta}
-                </button>
-              </article>
-            ))}
+            {PRICING.map((plan) => {
+              const formattedPrice = plan.plan
+                ? formatPlanPrice(plan.plan, activeCurrency)
+                : (CURRENCIES[activeCurrency]?.prices?.free || '$0');
+
+              return (
+                <article key={plan.name} className={`surface-card pricing-card ${plan.featured ? 'pricing-card--featured' : ''}`}>
+                  {plan.featured && <span className="featured-badge">Most popular</span>}
+                  <p className="pricing-role">{plan.role}</p>
+                  <h3>{plan.name}</h3>
+                  <div className="pricing-value">
+                    <strong>{formattedPrice}</strong>
+                    <span>{plan.note}</span>
+                  </div>
+                  <ul className="pricing-list">
+                    {plan.features.map((feature) => (
+                      <li key={feature}>
+                        <CheckCheck size={15} />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" className={plan.featured ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => handlePlanClick(plan)}>
+                    {plan.cta}
+                  </button>
+                </article>
+              );
+            })}
           </div>
         </section>
       </main>

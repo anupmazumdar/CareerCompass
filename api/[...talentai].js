@@ -294,6 +294,7 @@ app.use('/api/admin', adminRateLimiter);
 
 const DEFAULT_SUPERADMIN = {
   name: process.env.SUPERADMIN_NAME || 'TalentAI Admin',
+  username: (process.env.SUPERADMIN_USERNAME || 'anupmazumdar').toLowerCase(),
   email: (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase(),
   password: process.env.SUPERADMIN_PASSWORD || ''
 };
@@ -512,18 +513,26 @@ function ensureDataInitialized() {
 }
 
 async function ensureSuperAdminAccount() {
+  if (!DEFAULT_SUPERADMIN.password) {
+    return;
+  }
   const existingAdmin = users.find(u => u.userType === 'superadmin');
   if (existingAdmin) {
     const emailChanged = existingAdmin.email !== DEFAULT_SUPERADMIN.email;
-    const passwordValid = await bcrypt.compare(DEFAULT_SUPERADMIN.password, existingAdmin.password);
+    const usernameChanged = existingAdmin.username !== DEFAULT_SUPERADMIN.username;
+    let passwordValid = false;
+    try {
+      passwordValid = await bcrypt.compare(DEFAULT_SUPERADMIN.password, existingAdmin.password);
+    } catch (_) {}
 
-    if (emailChanged || !passwordValid) {
+    if (emailChanged || usernameChanged || !passwordValid) {
       existingAdmin.name = DEFAULT_SUPERADMIN.name;
+      existingAdmin.username = DEFAULT_SUPERADMIN.username;
       existingAdmin.email = DEFAULT_SUPERADMIN.email;
       existingAdmin.password = await bcrypt.hash(DEFAULT_SUPERADMIN.password, 10);
       existingAdmin.updatedAt = new Date().toISOString();
       await saveUsers();
-      console.log(`🔐 Updated superadmin account: ${DEFAULT_SUPERADMIN.email}`);
+      console.log(`🔐 Updated superadmin account: ${DEFAULT_SUPERADMIN.email} (${DEFAULT_SUPERADMIN.username})`);
     }
 
     return;
@@ -533,6 +542,7 @@ async function ensureSuperAdminAccount() {
   users.push({
     id: userId++,
     name: DEFAULT_SUPERADMIN.name,
+    username: DEFAULT_SUPERADMIN.username,
     email: DEFAULT_SUPERADMIN.email,
     password: hashedPassword,
     userType: 'superadmin',
@@ -541,7 +551,7 @@ async function ensureSuperAdminAccount() {
   });
 
   await saveUsers();
-  console.log(`🔐 Seeded superadmin account: ${DEFAULT_SUPERADMIN.email}`);
+  console.log(`🔐 Seeded superadmin account: ${DEFAULT_SUPERADMIN.email} (${DEFAULT_SUPERADMIN.username})`);
 }
 
 // Auto-save functions
@@ -1333,9 +1343,17 @@ app.post('/api/auth/register', async (req, res) => {
 // Login
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email/Username and password are required' });
+    }
 
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const identifier = String(email).trim().toLowerCase();
+    const user = users.find(u => 
+      (u.email && u.email.toLowerCase() === identifier) ||
+      (u.username && u.username.toLowerCase() === identifier) ||
+      (u.name && u.name.toLowerCase() === identifier)
+    );
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }

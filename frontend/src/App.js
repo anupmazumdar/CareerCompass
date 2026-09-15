@@ -8,6 +8,7 @@ import { Upload, CheckCircle, XCircle, User, Briefcase, MessageSquare, Award, Fi
 import './App.css';
 import Home from './pages/Home';
 import SupportChatbot from './components/SupportChatbot';
+import { CURRENCIES, CURRENCY_STORAGE_KEY, detectDefaultCurrency, formatPlanPrice } from './config/currencies';
 
 // ==================== BACKEND API URL ====================
 const API_URL = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:3001');
@@ -147,6 +148,8 @@ const SUBSCRIPTION_PLANS = {
 
 // ==================== MAIN APP COMPONENT ====================
 export default function AIRecruitmentAgent() {
+  const { logout: auth0Logout, isAuthenticated: isAuth0Authenticated } = useAuth0();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userType, setUserType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null); // NEW: Track selected plan
   const [authUserType, setAuthUserType] = useState(null);
@@ -175,6 +178,10 @@ export default function AIRecruitmentAgent() {
 
   useEffect(() => {
     localStorage.setItem('talentai_theme', theme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('theme-light', 'theme-dark');
+      document.documentElement.classList.add(`theme-${theme}`);
+    }
   }, [theme]);
 
   const login = (userData) => {
@@ -200,22 +207,70 @@ export default function AIRecruitmentAgent() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    setIsLoggingOut(true);
+
+    // 1. Clear internal auth state
     setAuthState({ isAuthenticated: false, user: null, token: null });
     localStorage.removeItem('talentai_auth');
     setUserType(null);
     setSubscription(null);
     setSelectedPlan(null);
     setAuthUserType(null);
+
+    // 2. Thoroughly clear Auth0 cache tokens from local and session storage
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('@@auth0spajs@@') || key.includes('auth0')) {
+          localStorage.removeItem(key);
+        }
+      });
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('@@auth0spajs@@') || key.includes('auth0')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (_) {}
+
+    // 3. If Auth0 has an active session, trigger full logout
+    try {
+      if (isAuth0Authenticated && typeof auth0Logout === 'function') {
+        await auth0Logout({
+          logoutParams: {
+            returnTo: window.location.origin
+          }
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn('Auth0 logout warning:', err);
+    }
+
+    // 4. Graceful delay (700ms) to ensure clean session termination & visual feedback
+    setTimeout(() => {
+      setIsLoggingOut(false);
+    }, 700);
   };
+
+  const [currency, setCurrency] = useState(detectDefaultCurrency);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+    } catch (_) {}
+  }, [currency]);
 
   const toggleTheme = () => {
     setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <div className={`app-shell min-h-screen overflow-x-hidden text-sm md:text-base lg:text-lg ${theme === 'light' ? 'theme-light' : 'theme-dark'} bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white`}>
-      <div className="fixed inset-0 opacity-20">
+    <div className={`app-shell min-h-screen overflow-x-hidden text-sm md:text-base lg:text-lg ${
+      theme === 'light'
+        ? 'theme-light bg-slate-50 text-slate-900'
+        : 'theme-dark bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white'
+    }`}>
+      <div className={`fixed inset-0 pointer-events-none transition-opacity duration-300 ${theme === 'light' ? 'opacity-10' : 'opacity-20'}`}>
         <div className="absolute top-0 left-1/4 h-48 w-48 rounded-full bg-indigo-500 blur-3xl animate-pulse md:h-72 md:w-72 lg:h-96 lg:w-96"></div>
         <div className="absolute bottom-0 right-1/4 h-48 w-48 rounded-full bg-purple-500 blur-3xl animate-pulse md:h-72 md:w-72 lg:h-96 lg:w-96" style={{ animationDelay: '1s' }}></div>
       </div>
@@ -223,7 +278,11 @@ export default function AIRecruitmentAgent() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="theme-toggle fixed right-3 top-3 z-[100] inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-900/80 text-white shadow-lg shadow-black/20 backdrop-blur-md transition hover:bg-slate-800/90 md:right-5 md:top-5"
+        className={`theme-toggle fixed right-3 top-3 z-[100] inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition md:right-5 md:top-5 ${
+          theme === 'light'
+            ? 'border-slate-300 bg-white/95 text-slate-800 shadow-slate-200/80 hover:bg-white hover:text-slate-950'
+            : 'border-white/15 bg-slate-900/80 text-white shadow-black/20 hover:bg-slate-800/90'
+        }`}
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       >
         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
@@ -240,6 +299,8 @@ export default function AIRecruitmentAgent() {
             logout={logout}
             setSelectedPlan={setSelectedPlan}
             setAuthUserType={setAuthUserType}
+            currency={currency}
+            setCurrency={setCurrency}
           />
         ) : userType === 'candidate' ? (
           <CandidatePortal
@@ -271,6 +332,8 @@ export default function AIRecruitmentAgent() {
           setAuthMode={setAuthMode}
           setSelectedPlan={setSelectedPlan}
           setAuthUserType={setAuthUserType}
+          currency={currency}
+          setCurrency={setCurrency}
         />
       )}
 
@@ -283,7 +346,20 @@ export default function AIRecruitmentAgent() {
           selectedPlan={selectedPlan}
           authUserType={authUserType}
           setAuthUserType={setAuthUserType}
+          currency={currency}
         />
+      )}
+
+      {isLoggingOut && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[999] flex flex-col items-center justify-center p-4">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center mb-4">
+            <RefreshCw size={26} className="text-indigo-400 animate-spin" />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-1">Logging Out Securely</h3>
+          <p className="text-xs md:text-sm text-slate-400 text-center max-w-sm">
+            Ending your active session and clearing Google / Auth0 credentials...
+          </p>
+        </div>
       )}
 
       <SupportChatbot apiUrl={API_URL} authState={authState} userType={userType} />
@@ -292,7 +368,7 @@ export default function AIRecruitmentAgent() {
 }
 
 // ==================== AUTH MODAL (WITH SELECTED PLAN INFO) ====================
-function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPlan, authUserType, setAuthUserType }) {
+function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPlan, authUserType, setAuthUserType, currency = 'USD' }) {
   const {
     isLoading: isAuth0Loading,
     isAuthenticated: isAuth0Authenticated,
@@ -310,7 +386,7 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
     email: '',
     password: '',
     confirmPassword: '',
-    userType: selectedPlan || authUserType === 'recruiter' ? 'recruiter' : 'candidate',
+    userType: authUserType === 'superadmin' ? 'superadmin' : (selectedPlan || authUserType === 'recruiter' ? 'recruiter' : 'candidate'),
     company: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -319,6 +395,10 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
   const [auth0Exchanged, setAuth0Exchanged] = useState(false);
 
   useEffect(() => {
+    if (authUserType === 'superadmin') {
+      setFormData(prev => ({ ...prev, userType: 'superadmin', company: '' }));
+      return;
+    }
     if (selectedPlan) {
       setFormData(prev => ({ ...prev, userType: 'recruiter' }));
       return;
@@ -343,7 +423,12 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
 
   const handleAuth0SignIn = async (screenHint) => {
     setError('');
-    const params = screenHint ? { authorizationParams: { screen_hint: screenHint } } : undefined;
+    const params = {
+      authorizationParams: {
+        prompt: 'select_account',
+        ...(screenHint ? { screen_hint: screenHint } : {})
+      }
+    };
     try {
       await loginWithPopup(params);
     } catch (e) {
@@ -360,15 +445,29 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
     }
   };
 
-  const handleAuth0Logout = () => {
+  const handleAuth0Logout = async () => {
     try {
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('@@auth0spajs@@')) {
+        if (key.startsWith('@@auth0spajs@@') || key.includes('auth0')) {
           localStorage.removeItem(key);
         }
       });
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('@@auth0spajs@@') || key.includes('auth0')) {
+          sessionStorage.removeItem(key);
+        }
+      });
     } catch (e) {}
-    auth0Logout({ localOnly: true });
+
+    try {
+      await auth0Logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    } catch (e) {
+      auth0Logout({ localOnly: true });
+    }
   };
 
   // Clear any legacy refresh-token error from localStorage automatically
@@ -513,19 +612,29 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4">
       <div className="bg-slate-900/95 rounded-2xl max-w-md w-full p-4 md:p-6 border border-slate-700">
-        <h2 className="text-xl md:text-2xl font-bold mb-3 text-center">
-          {authMode === 'login'
-            ? `${authUserType === 'superadmin' ? 'Admin' : authUserType === 'recruiter' ? 'Recruiter' : authUserType === 'candidate' ? 'Candidate' : ''} Sign In`.trim()
-            : `${authUserType === 'recruiter' ? 'Recruiter' : authUserType === 'candidate' ? 'Candidate' : ''} Create Account`.trim()}
-        </h2>
+        {authUserType === 'superadmin' ? (
+          <div className="flex flex-col items-center mb-5 text-center">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mb-2.5 text-amber-400 shadow-md shadow-amber-950/20">
+              <ShieldCheck size={26} />
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Administrator Sign In</h2>
+            <p className="text-xs text-slate-400 mt-1">Superadmin credentials required</p>
+          </div>
+        ) : (
+          <h2 className="text-xl md:text-2xl font-bold mb-3 text-center text-white">
+            {authMode === 'login'
+              ? `${authUserType === 'recruiter' ? 'Recruiter' : authUserType === 'candidate' ? 'Candidate' : ''} Sign In`.trim()
+              : `${authUserType === 'recruiter' ? 'Recruiter' : authUserType === 'candidate' ? 'Candidate' : ''} Create Account`.trim()}
+          </h2>
+        )}
 
-        {/* Show selected plan info */}
-        {selectedPlan && authMode === 'register' && (
+        {/* Show selected plan info for regular registration */}
+        {selectedPlan && authMode === 'register' && authUserType !== 'superadmin' && (
           <div className="mb-4 p-3 bg-purple-600/20 border border-purple-500/30 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-300">Selected Plan:</p>
-                <p className="font-bold text-lg">{SUBSCRIPTION_PLANS[selectedPlan].name} - ${SUBSCRIPTION_PLANS[selectedPlan].price}/mo</p>
+                <p className="font-bold text-lg text-white">{SUBSCRIPTION_PLANS[selectedPlan]?.name} - {formatPlanPrice(selectedPlan, currency)}/mo</p>
               </div>
               <Crown className="text-yellow-400" size={24} />
             </div>
@@ -538,116 +647,115 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
           </div>
         )}
 
-        {authMode === 'login' && (
-          <div className="mb-4 p-3 bg-slate-800/60 border border-slate-700 rounded-lg text-xs text-slate-300">
-            Admin access uses the regular sign-in form. Log in with a superadmin account to open the admin dashboard.
-          </div>
-        )}
-
-        <div className="mb-4 space-y-2">
-          {!isAuth0Authenticated ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleAuth0SignIn()}
-                disabled={isAuth0Loading || loading}
-                className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base bg-cyan-700 hover:bg-cyan-600 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {isAuth0Loading ? 'Connecting to Auth0...' : 'Continue with Auth0'}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAuth0SignIn('signup')}
-                disabled={isAuth0Loading || loading}
-                className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base bg-slate-800 border border-slate-600 hover:bg-slate-700 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                Sign up with Auth0
-              </button>
-            </>
-          ) : (
-            <div className="p-3 bg-cyan-600/10 border border-cyan-500/30 rounded-lg text-xs text-cyan-200">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-cyan-100">Auth0 Connected</p>
-                <span className="px-2 py-0.5 rounded bg-cyan-800/80 text-[10px] text-cyan-300 font-mono">
-                  {auth0User?.email || 'Logged In'}
-                </span>
-              </div>
-              <p className="mt-1 text-cyan-300/80">
-                {loading
-                  ? 'Connecting your account into TalentAI...'
-                  : 'Complete your sign-in below, or log out of this Auth0 session.'}
-              </p>
-
-              {!selectedPlan && !authUserType && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
+        {/* Auth0 & Social sign-in ONLY for non-admin users */}
+        {authUserType !== 'superadmin' && (
+          <>
+            <div className="mb-4 space-y-2">
+              {!isAuth0Authenticated ? (
+                <>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, userType: 'candidate', company: '' }));
-                    }}
-                    className={`p-2 rounded-lg border transition-all text-xs font-semibold ${
-                      formData.userType === 'candidate'
-                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-slate-800/60 border-slate-600 text-slate-300'
-                    }`}
+                    onClick={() => handleAuth0SignIn()}
+                    disabled={isAuth0Loading || loading}
+                    className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base bg-cyan-700 hover:bg-cyan-600 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-white"
                   >
-                    Candidate
+                    {isAuth0Loading ? 'Connecting to Auth0...' : 'Continue with Auth0'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, userType: 'recruiter' }));
-                    }}
-                    className={`p-2 rounded-lg border transition-all text-xs font-semibold ${
-                      formData.userType === 'recruiter'
-                        ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-800/60 border-slate-600 text-slate-300'
-                    }`}
+                    onClick={() => handleAuth0SignIn('signup')}
+                    disabled={isAuth0Loading || loading}
+                    className="w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base bg-slate-800 border border-slate-600 hover:bg-slate-700 transition-all disabled:opacity-60 flex items-center justify-center gap-2 text-white"
                   >
-                    Recruiter
+                    Sign up with Auth0
                   </button>
+                </>
+              ) : (
+                <div className="p-3 bg-cyan-600/10 border border-cyan-500/30 rounded-lg text-xs text-cyan-200">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-cyan-100">Auth0 Connected</p>
+                    <span className="px-2 py-0.5 rounded bg-cyan-800/80 text-[10px] text-cyan-300 font-mono">
+                      {auth0User?.email || 'Logged In'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-cyan-300/80">
+                    {loading
+                      ? 'Connecting your account into TalentAI...'
+                      : 'Complete your sign-in below, or log out of this Auth0 session.'}
+                  </p>
+
+                  {!selectedPlan && !authUserType && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, userType: 'candidate', company: '' }));
+                        }}
+                        className={`p-2 rounded-lg border transition-all text-xs font-semibold ${
+                          formData.userType === 'candidate'
+                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                            : 'bg-slate-800/60 border-slate-600 text-slate-300'
+                        }`}
+                      >
+                        Candidate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, userType: 'recruiter' }));
+                        }}
+                        className={`p-2 rounded-lg border transition-all text-xs font-semibold ${
+                          formData.userType === 'recruiter'
+                            ? 'bg-purple-600 border-purple-500 text-white'
+                            : 'bg-slate-800/60 border-slate-600 text-slate-300'
+                        }`}
+                      >
+                        Recruiter
+                      </button>
+                    </div>
+                  )}
+
+                  {formData.userType === 'recruiter' && (
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      className="mt-3 w-full px-3 py-2 bg-slate-900/70 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none text-xs text-white"
+                      placeholder="Company Name (Required for Recruiters)"
+                    />
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAuth0SessionContinue}
+                      disabled={loading}
+                      className="flex-1 min-h-[36px] rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-60 text-white"
+                    >
+                      {loading ? 'Initializing Session...' : 'Continue into TalentAI →'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAuth0Logout}
+                      className="min-h-[36px] rounded-md bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
               )}
-
-              {formData.userType === 'recruiter' && (
-                <input
-                  type="text"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="mt-3 w-full px-3 py-2 bg-slate-900/70 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none text-xs"
-                  placeholder="Company Name (Required for Recruiters)"
-                />
-              )}
-
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleAuth0SessionContinue}
-                  disabled={loading}
-                  className="flex-1 min-h-[36px] rounded-md bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-60 text-white"
-                >
-                  {loading ? 'Initializing Session...' : 'Continue into TalentAI →'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAuth0Logout}
-                  className="min-h-[36px] rounded-md bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all"
-                >
-                  Logout
-                </button>
-              </div>
             </div>
-          )}
-        </div>
 
-        <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
-          <span className="h-px flex-1 bg-slate-700" />
-          <span>or use TalentAI account</span>
-          <span className="h-px flex-1 bg-slate-700" />
-        </div>
+            <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
+              <span className="h-px flex-1 bg-slate-700" />
+              <span>or use TalentAI account</span>
+              <span className="h-px flex-1 bg-slate-700" />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {authMode === 'register' && (
+          {authMode === 'register' && authUserType !== 'superadmin' && (
             <>
               {formData.userType !== 'candidate' && (
                 <div>
@@ -655,7 +763,7 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                    className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none text-white text-sm"
                     placeholder="Recruiter Name"
                     required
                   />
@@ -674,8 +782,8 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                       setFormData({ ...formData, userType: 'candidate', company: '' });
                     }}
                     className={`p-2.5 rounded-lg border transition-all text-sm ${formData.userType === 'candidate'
-                      ? 'bg-indigo-600 border-indigo-500'
-                      : 'bg-slate-800/50 border-slate-600'
+                      ? 'bg-indigo-600 border-indigo-500 text-white'
+                      : 'bg-slate-800/50 border-slate-600 text-slate-300'
                       }`}
                   >
                     <User className="mx-auto mb-1" size={20} />
@@ -687,8 +795,8 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                       setFormData({ ...formData, userType: 'recruiter' });
                     }}
                     className={`p-2.5 rounded-lg border transition-all text-sm ${formData.userType === 'recruiter'
-                      ? 'bg-purple-600 border-purple-500'
-                      : 'bg-slate-800/50 border-slate-600'
+                      ? 'bg-purple-600 border-purple-500 text-white'
+                      : 'bg-slate-800/50 border-slate-600 text-slate-300'
                       }`}
                   >
                     <Briefcase className="mx-auto mb-1" size={20} />
@@ -702,7 +810,7 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                   type="text"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none text-white text-sm"
                   placeholder="Company Name"
                   required
                 />
@@ -713,41 +821,51 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input
-              type="email"
+              type={authUserType === 'superadmin' ? 'text' : 'email'}
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
-              placeholder="Email"
+              className={`w-full pl-10 pr-4 py-2.5 bg-slate-800/50 rounded-lg border text-white text-sm focus:outline-none ${
+                authUserType === 'superadmin'
+                  ? 'border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                  : 'border-slate-600 focus:border-indigo-500'
+              }`}
+              placeholder={authUserType === 'superadmin' ? 'Admin Email or Username' : 'Email'}
               required
+              autoComplete={authUserType === 'superadmin' ? 'username' : 'email'}
             />
           </div>
 
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full pl-10 pr-10 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
-              placeholder="Password"
+              className={`w-full pl-10 pr-10 py-2.5 bg-slate-800/50 rounded-lg border text-white text-sm focus:outline-none ${
+                authUserType === 'superadmin'
+                  ? 'border-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500'
+                  : 'border-slate-600 focus:border-indigo-500'
+              }`}
+              placeholder={authUserType === 'superadmin' ? 'Admin Password' : 'Password'}
               required
               minLength={8}
+              autoComplete={authUserType === 'superadmin' ? 'current-password' : 'current-password'}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-200"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
-          {authMode === 'register' && (
+          {authMode === 'register' && authUserType !== 'superadmin' && (
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               value={formData.confirmPassword}
               onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none"
+              className="w-full px-4 py-2.5 bg-slate-800/50 rounded-lg border border-slate-600 focus:border-indigo-500 focus:outline-none text-white text-sm"
               placeholder="Confirm Password"
               required
               minLength={8}
@@ -757,23 +875,37 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
           <button
             type="submit"
             disabled={loading}
-            className="w-full min-h-[44px] py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg font-semibold text-sm md:text-base hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50"
+            className={`w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base transition-all disabled:opacity-50 text-white ${
+              authUserType === 'superadmin'
+                ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-lg shadow-amber-900/30'
+                : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500'
+            }`}
           >
-            {loading ? 'Please wait...' : authMode === 'login' ? 'Sign In' : selectedPlan ? `Sign Up & Subscribe to ${SUBSCRIPTION_PLANS[selectedPlan].name}` : 'Sign Up'}
+            {loading
+              ? 'Authenticating...'
+              : authUserType === 'superadmin'
+                ? 'Sign In to Admin Console'
+                : authMode === 'login'
+                  ? 'Sign In'
+                  : selectedPlan
+                    ? `Sign Up & Subscribe to ${SUBSCRIPTION_PLANS[selectedPlan]?.name}`
+                    : 'Sign Up'}
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
-          <button
-            onClick={() => {
-              setAuthMode(authMode === 'login' ? 'register' : 'login');
-              setError('');
-            }}
-            className="text-indigo-400 hover:text-indigo-300"
-          >
-            {authMode === 'login' ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
-          </button>
-        </div>
+        {authUserType !== 'superadmin' && (
+          <div className="mt-4 text-center text-sm">
+            <button
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'register' : 'login');
+                setError('');
+              }}
+              className="text-indigo-400 hover:text-indigo-300"
+            >
+              {authMode === 'login' ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+            </button>
+          </div>
+        )}
 
         <button
           onClick={() => {
@@ -790,7 +922,7 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
 }
 
 // ==================== SUBSCRIPTION MODAL (UPDATED) ====================
-function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserType, authState, setShowAuthModal, setAuthMode, setSelectedPlan, setAuthUserType }) {
+function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserType, authState, setShowAuthModal, setAuthMode, setSelectedPlan, setAuthUserType, currency = 'USD', setCurrency }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
 
   const handlePlanSelect = (planKey) => {
@@ -803,17 +935,18 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
       setShowAuthModal(true);
     } else {
       const plan = SUBSCRIPTION_PLANS[planKey];
-      const amount = billingCycle === 'yearly' ? Math.round(plan.price * 12 * 0.8) : plan.price;
+      const formattedPrice = formatPlanPrice(planKey, currency, billingCycle);
 
       setSubscription({
         plan: planKey,
         billingCycle: billingCycle,
+        currency: currency,
         startDate: new Date().toISOString(),
-        amount: amount
+        amount: formattedPrice
       });
 
       setUserType('recruiter');
-      alert(`Successfully subscribed to ${plan.name} plan!`);
+      alert(`Successfully subscribed to ${plan.name} plan (${formattedPrice}/${billingCycle === 'yearly' ? 'yr' : 'mo'})!`);
     }
   };
 
@@ -821,8 +954,30 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-4 overflow-y-auto">
       <div className="bg-slate-900/95 rounded-xl max-w-6xl w-full p-4 md:p-8 my-4 md:my-8 border border-slate-700">
         <div className="text-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Choose Your Plan</h2>
-          <p className="text-sm md:text-base text-slate-300 mb-4">Select the perfect plan for your recruitment needs</p>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">Choose Your Plan</h2>
+          <p className="text-sm md:text-base text-slate-300 mb-3">Select the perfect plan for your recruitment needs</p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+            {Object.values(CURRENCIES).map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                  currency === c.code
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-900/40'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white'
+                }`}
+                onClick={() => {
+                  if (setCurrency) setCurrency(c.code);
+                  try {
+                    localStorage.setItem(CURRENCY_STORAGE_KEY, c.code);
+                  } catch (_) {}
+                }}
+              >
+                {c.flag} {c.code} ({c.symbol})
+              </button>
+            ))}
+          </div>
 
           <div className="flex items-center justify-center gap-3">
             <span className={billingCycle === 'monthly' ? 'text-white text-sm font-semibold' : 'text-slate-400 text-sm'}>Monthly</span>
@@ -842,7 +997,7 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-6">
           {Object.entries(SUBSCRIPTION_PLANS).map(([key, plan]) => {
             const Icon = plan.icon;
-            const price = billingCycle === 'yearly' ? Math.round(plan.price * 12 * 0.8) : plan.price;
+            const formattedPrice = formatPlanPrice(key, currency, billingCycle);
 
             return (
               <div
@@ -860,9 +1015,9 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
 
                 <div className="text-center mb-4">
                   <Icon size={28} className="mx-auto mb-2 text-purple-400" />
-                  <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
+                  <h3 className="text-xl font-bold mb-1 text-white">{plan.name}</h3>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-bold">${price}</span>
+                    <span className="text-3xl font-bold text-white">{formattedPrice}</span>
                     <span className="text-slate-400 text-xs">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
                   </div>
                 </div>
@@ -889,8 +1044,8 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
                 <button
                   onClick={() => handlePlanSelect(key)}
                   className={`w-full min-h-[44px] py-2.5 rounded-lg font-semibold text-sm md:text-base transition-all ${plan.popular
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500'
-                    : 'bg-slate-700 hover:bg-slate-600'
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                    : 'bg-slate-700 hover:bg-slate-600 text-white'
                     }`}
                 >
                   Choose {plan.name}

@@ -8,6 +8,12 @@ class UserRepository {
     return db.get('SELECT * FROM users WHERE email = ? AND deleted_at IS NULL', [email.toLowerCase()]);
   }
 
+  async findByEmailOrUsername(identifier) {
+    if (!identifier) return null;
+    const clean = identifier.toLowerCase().trim();
+    return db.get('SELECT * FROM users WHERE (LOWER(email) = ? OR LOWER(full_name) = ?) AND deleted_at IS NULL', [clean, clean]);
+  }
+
   async findById(id) {
     return db.get('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL', [id]);
   }

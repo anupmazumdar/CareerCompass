@@ -100,7 +100,7 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Email and password are required' });
     }
 
-    const user = await userRepo.findByEmail(email);
+    const user = (await userRepo.findByEmailOrUsername?.(email)) || (await userRepo.findByEmail(email));
     if (!user) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Invalid email or password' });
     }
