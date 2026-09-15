@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Upload, CheckCircle, XCircle, User, Briefcase, MessageSquare, Award, FileText, Users, TrendingUp, Crown, Zap, Sparkles, Check, X, Mail, Lock, Eye, EyeOff, LogOut, Video, VideoOff, Search, Paperclip, Image as ImageIcon, Clock3, Sun, Moon, Download, Copy, RefreshCw, ShieldCheck, CheckCheck, ExternalLink, Printer, Plus, Trash2, Edit3, Code, AlertTriangle, FileWarning } from 'lucide-react';
+import { Upload, CheckCircle, XCircle, User, Briefcase, MessageSquare, Award, FileText, Users, TrendingUp, Crown, Zap, Sparkles, Check, X, Mail, Lock, Eye, EyeOff, LogOut, Video, VideoOff, Search, Paperclip, Image as ImageIcon, Clock3, Sun, Moon, Download, Copy, RefreshCw, ShieldCheck, CheckCheck, ExternalLink, Printer, Plus, Trash2, Edit3, Code, AlertTriangle, FileWarning, Layers, BarChart2 } from 'lucide-react';
 import './App.css';
 import Home from './pages/Home';
 import SupportChatbot from './components/SupportChatbot';
@@ -911,8 +911,942 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
   );
 }
 
+// ==================== OPPORTUNITY DISCOVERY MODULE ====================
+function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, setStage }) {
+  const [opportunities, setOpportunities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [workTypeFilter, setWorkTypeFilter] = useState('all');
+  const [minMatchFilter, setMinMatchFilter] = useState(0);
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [actionFeedback, setActionFeedback] = useState(null);
+
+  const fetchOpportunities = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const queryParams = new URLSearchParams();
+      if (search.trim()) queryParams.set('search', search.trim());
+      if (workTypeFilter !== 'all') queryParams.set('workType', workTypeFilter);
+      if (minMatchFilter > 0) queryParams.set('minMatch', String(minMatchFilter));
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (authState?.token) {
+        headers['Authorization'] = `Bearer ${authState.token}`;
+      }
+
+      const res = await fetch(`${API_URL}/api/opportunities?${queryParams.toString()}`, { headers });
+      const data = await parseApiJson(res);
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load opportunities');
+      }
+
+      setOpportunities(data.opportunities || []);
+    } catch (err) {
+      console.error('Fetch opportunities error:', err);
+      setError(err.message || 'Unable to load opportunities. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, workTypeFilter, minMatchFilter, authState?.token]);
+
+  useEffect(() => {
+    fetchOpportunities();
+  }, [fetchOpportunities]);
+
+  const handleApply = async (opp) => {
+    try {
+      const res = await fetch(`${API_URL}/api/applications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState?.token}`
+        },
+        body: JSON.stringify({ opportunityId: opp.id, status: 'Applied' })
+      });
+      const data = await parseApiJson(res);
+      if (res.status === 409) {
+        setActionFeedback({ id: opp.id, message: 'Already in your Application Tracker!' });
+      } else if (!res.ok || !data.success) {
+        setActionFeedback({ id: opp.id, message: data.error || 'Failed to submit application', isError: true });
+      } else {
+        setActionFeedback({ id: opp.id, message: '✓ Application submitted! Added to your Tracker.' });
+      }
+    } catch (err) {
+      setActionFeedback({ id: opp.id, message: 'Failed to submit application', isError: true });
+    }
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  const handleWishlist = async (opp) => {
+    try {
+      const res = await fetch(`${API_URL}/api/applications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState?.token}`
+        },
+        body: JSON.stringify({ opportunityId: opp.id, status: 'Wishlist' })
+      });
+      const data = await parseApiJson(res);
+      if (res.status === 409) {
+        setActionFeedback({ id: opp.id, message: 'Already saved in your Application Tracker!' });
+      } else if (!res.ok || !data.success) {
+        setActionFeedback({ id: opp.id, message: data.error || 'Failed to save to Wishlist', isError: true });
+      } else {
+        setActionFeedback({ id: opp.id, message: '★ Saved to Wishlist in your Tracker!' });
+      }
+    } catch (err) {
+      setActionFeedback({ id: opp.id, message: 'Failed to save to Wishlist', isError: true });
+    }
+    setTimeout(() => setActionFeedback(null), 3000);
+  };
+
+  const highMatchCount = opportunities.filter(o => (o.matchPercentage || 0) >= 80).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-slate-900/90 p-5 md:p-6 border border-indigo-500/20 backdrop-blur-xl shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-2">
+              <Sparkles size={14} className="text-indigo-400 flex-shrink-0" />
+              <span>AI Match Engine Active</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Career Opportunity Discovery</h2>
+            <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-xl">
+              Roles are dynamically ranked against your profile and resume skills using the TalentAI hybrid matching engine.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 text-center min-w-[90px] shadow-sm">
+              <p className="text-xs text-slate-400 font-medium">Total Roles</p>
+              <p className="text-xl font-bold text-white">{opportunities.length}</p>
+            </div>
+            <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-3 text-center min-w-[100px] shadow-sm">
+              <p className="text-xs text-emerald-400 font-medium">Strong Match</p>
+              <p className="text-xl font-bold text-emerald-300">{highMatchCount}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 space-y-3 shadow-md">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by job title, company name, or tech skill..."
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-800/80 border border-slate-600 rounded-xl text-sm focus:border-indigo-500 focus:outline-none placeholder:text-slate-500 text-white"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={fetchOpportunities}
+            className="min-h-[42px] px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span>Search</span>
+          </button>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-slate-400 font-medium mr-1">Work Type:</span>
+            {[
+              { id: 'all', label: 'All Types' },
+              { id: 'remote', label: '🌐 Remote' },
+              { id: 'hybrid', label: '⚡ Hybrid' },
+              { id: 'onsite', label: '🏢 Onsite' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setWorkTypeFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  workTypeFilter === tab.id
+                    ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+                    : 'bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-medium">Min Match %:</span>
+            <select
+              value={minMatchFilter}
+              onChange={(e) => setMinMatchFilter(Number(e.target.value))}
+              aria-label="Filter opportunities by minimum match percentage"
+              className="bg-slate-800/80 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500"
+            >
+              <option value={0}>Any Match</option>
+              <option value={60}>60%+ Match</option>
+              <option value={75}>75%+ Match</option>
+              <option value={85}>85%+ Strong Match</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Notification */}
+      {actionFeedback && (
+        <div className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-fadeIn">
+          <CheckCircle size={18} className="text-emerald-400 flex-shrink-0" />
+          <span>{actionFeedback.message}</span>
+        </div>
+      )}
+
+      {/* Opportunities Grid / Loading / Empty State */}
+      {loading ? (
+        <div className="py-20 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4" />
+          <p className="text-slate-400 text-sm">Matching opportunities to your skill profile...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-rose-950/40 border border-rose-700/50 p-6 rounded-2xl text-center">
+          <p className="text-rose-300 font-semibold mb-2">{error}</p>
+          <button
+            onClick={fetchOpportunities}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-white transition-all"
+          >
+            Retry
+          </button>
+        </div>
+      ) : opportunities.length === 0 ? (
+        <div className="bg-slate-900/60 border border-slate-800 p-12 rounded-2xl text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+            <Search size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-white">No Opportunities Found</h3>
+          <p className="text-sm text-slate-400 max-w-md mx-auto">
+            Try broadening your search query, selecting "All" work types, or lowering the minimum match filter.
+          </p>
+          <button
+            onClick={() => { setSearch(''); setWorkTypeFilter('all'); setMinMatchFilter(0); }}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all"
+          >
+            Reset Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {opportunities.map((opp) => {
+            const matchScore = Number(opp.matchPercentage) || 75;
+            const isHighMatch = matchScore >= 80;
+            const isMidMatch = matchScore >= 60 && matchScore < 80;
+
+            const workTypeColors = {
+              remote: 'bg-sky-950/60 text-sky-400 border-sky-800/40',
+              hybrid: 'bg-purple-950/60 text-purple-400 border-purple-800/40',
+              onsite: 'bg-slate-800/80 text-slate-300 border-slate-700/60'
+            };
+
+            return (
+              <div
+                key={opp.id}
+                className="group relative flex flex-col justify-between rounded-2xl bg-slate-900/70 border border-slate-700/70 p-5 hover:border-indigo-500/50 hover:bg-slate-900/90 transition-all duration-300 shadow-lg hover:shadow-indigo-500/10"
+              >
+                <div>
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 flex items-center justify-center text-white font-bold text-base flex-shrink-0 shadow-md">
+                        {opp.company ? opp.company[0].toUpperCase() : '🏢'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-400 truncate uppercase tracking-wider">
+                          {opp.company}
+                        </p>
+                        <h3 className="text-base font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
+                          {opp.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Match Score Badge */}
+                    <div
+                      className={`flex-shrink-0 px-2.5 py-1 rounded-xl text-xs font-bold border flex items-center gap-1 ${
+                        isHighMatch
+                          ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20'
+                          : isMidMatch
+                          ? 'bg-amber-950/60 text-amber-300 border-amber-500/40'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                      title={`Skill Match: ${matchScore}% calculated from your profile`}
+                    >
+                      <Sparkles size={12} className={isHighMatch ? 'text-emerald-400' : 'text-amber-400'} />
+                      <span>{matchScore}% Match</span>
+                    </div>
+                  </div>
+
+                  {/* Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mb-3">
+                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${workTypeColors[opp.workType] || workTypeColors.onsite}`}>
+                      {opp.workType === 'remote' ? '🌐 Remote' : opp.workType === 'hybrid' ? '⚡ Hybrid' : '🏢 Onsite'}
+                    </span>
+                    <span>📍 {opp.location}</span>
+                    {opp.deadline && (
+                      <span className="flex items-center gap-1 text-slate-500">
+                        <Clock3 size={12} />
+                        <span>Deadline: {new Date(opp.deadline).toLocaleDateString()}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Short Description */}
+                  <p className="text-xs text-slate-300 line-clamp-2 mb-4 leading-relaxed">
+                    {opp.description}
+                  </p>
+
+                  {/* Tagged Required Skills */}
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Required Skills:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(opp.requiredSkills || []).map((skill, idx) => {
+                        const isStudentSkill = (opp.matchedSkills || []).includes(skill);
+                        return (
+                          <span
+                            key={idx}
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1 ${
+                              isStudentSkill
+                                ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-700/50'
+                                : 'bg-slate-800/80 text-slate-400 border border-slate-700/60'
+                            }`}
+                          >
+                            {isStudentSkill ? <Check size={10} className="text-emerald-400" /> : <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />}
+                            <span>{skill}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Actions */}
+                <div className="pt-3 border-t border-slate-800/80 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOpportunity(opp)}
+                    className="flex-1 min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-all text-center flex items-center justify-center gap-1"
+                  >
+                    <span>View Details</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleWishlist(opp)}
+                    className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-700/40 transition-all"
+                    title="Save to Wishlist"
+                  >
+                    ★ Wishlist
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApply(opp)}
+                    className="min-h-[38px] px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all flex items-center gap-1"
+                  >
+                    <span>Apply</span>
+                    <ExternalLink size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Opportunity Details Modal */}
+      {selectedOpportunity && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-5 shadow-2xl relative">
+            <button
+              onClick={() => setSelectedOpportunity(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+              aria-label="Close modal"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-start gap-4 pr-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-lg">
+                {selectedOpportunity.company ? selectedOpportunity.company[0].toUpperCase() : '🏢'}
+              </div>
+              <div>
+                <span className="text-xs uppercase font-bold tracking-wider text-indigo-400">
+                  {selectedOpportunity.company}
+                </span>
+                <h2 className="text-xl md:text-2xl font-black text-white">
+                  {selectedOpportunity.title}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+                  <span>📍 {selectedOpportunity.location}</span>
+                  <span>•</span>
+                  <span className="capitalize">{selectedOpportunity.workType}</span>
+                  <span>•</span>
+                  <span className="capitalize">{selectedOpportunity.employmentType || 'Full-time'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Match Percentage Callout */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-slate-800/90 to-indigo-950/60 border border-indigo-500/30 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-slate-300">Your AI Readiness Match</p>
+                <p className="text-lg font-bold text-emerald-400">
+                  {selectedOpportunity.matchPercentage || 75}% Alignment
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-400">
+                  {(selectedOpportunity.matchedSkills || []).length} of {(selectedOpportunity.requiredSkills || []).length} required skills matched
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Job Description
+              </h4>
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                {selectedOpportunity.description}
+              </p>
+            </div>
+
+            {/* Skill Breakdown: Matched vs Missing */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
+                <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <CheckCircle size={14} />
+                  <span>Skills You Have ({(selectedOpportunity.matchedSkills || []).length})</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedOpportunity.matchedSkills || []).length > 0 ? (
+                    selectedOpportunity.matchedSkills.map((s, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-200 border border-emerald-700/40 text-xs font-medium">
+                        {s}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-400">Complete resume analysis to detect matched skills.</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/40">
+                <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Sparkles size={14} />
+                  <span>Skills to Learn ({(selectedOpportunity.missingSkills || []).length})</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedOpportunity.missingSkills || []).length > 0 ? (
+                    selectedOpportunity.missingSkills.map((s, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-amber-900/40 text-amber-200 border border-amber-700/40 text-xs font-medium">
+                        {s}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-emerald-400 font-medium">You have all required skills! 🎉</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bridge Skill Gap Advisory */}
+            {(selectedOpportunity.missingSkills || []).length > 0 && (
+              <div className="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-indigo-300">Need to level up for this role?</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Generate an instant personalized learning roadmap in our Upgrade Skills module.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedOpportunity(null);
+                    setActivePortalTab('pipeline');
+                    setStage('upgradeSkills');
+                  }}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition"
+                >
+                  Upgrade Skills →
+                </button>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedOpportunity(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-semibold transition"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleApply(selectedOpportunity);
+                  setSelectedOpportunity(null);
+                }}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5"
+              >
+                <span>Submit Application</span>
+                <ExternalLink size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================== APPLICATION TRACKER MODULE ====================
+function ApplicationTracker({ candidateData, authState, setActivePortalTab, setStage }) {
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('kanban');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [updatingId, setUpdatingId] = useState(null);
+  const [actionFeedback, setActionFeedback] = useState(null);
+
+  const fetchApplications = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authState?.token) {
+        headers['Authorization'] = `Bearer ${authState.token}`;
+      }
+      const res = await fetch(`${API_URL}/api/applications/my-applications`, { headers });
+      const data = await parseApiJson(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load applications');
+      }
+      setApplications(data.applications || []);
+    } catch (err) {
+      console.error('Fetch applications error:', err);
+      setError(err.message || 'Unable to load applications.');
+    } finally {
+      setLoading(false);
+    }
+  }, [authState?.token]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
+
+  const handleStatusChange = async (appId, newStatus) => {
+    setUpdatingId(appId);
+    try {
+      const res = await fetch(`${API_URL}/api/applications/${appId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState?.token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await parseApiJson(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update status');
+      }
+      setApplications(prev =>
+        prev.map(a => (a.id === appId ? { ...a, status: newStatus } : a))
+      );
+      setActionFeedback({ message: `Moved to ${newStatus}` });
+      setTimeout(() => setActionFeedback(null), 2500);
+    } catch (err) {
+      setActionFeedback({ message: err.message || 'Status update failed', isError: true });
+      setTimeout(() => setActionFeedback(null), 3500);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleWithdraw = async (appId) => {
+    if (!window.confirm('Are you sure you want to withdraw this application from your tracker?')) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/applications/${appId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authState?.token}`
+        }
+      });
+      const data = await parseApiJson(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to withdraw application');
+      }
+      setApplications(prev => prev.filter(a => a.id !== appId));
+      setActionFeedback({ message: 'Application withdrawn from tracker' });
+      setTimeout(() => setActionFeedback(null), 2500);
+    } catch (err) {
+      setActionFeedback({ message: err.message || 'Withdrawal failed', isError: true });
+      setTimeout(() => setActionFeedback(null), 3500);
+    }
+  };
+
+  const columns = [
+    { key: 'Wishlist', label: 'Wishlist', dotColor: 'bg-slate-400', badgeClass: 'bg-slate-800 text-slate-300 border-slate-700', headerBg: 'border-slate-800 bg-slate-900/60' },
+    { key: 'Applied', label: 'Applied', dotColor: 'bg-blue-400', badgeClass: 'bg-blue-900/40 text-blue-300 border-blue-800/50', headerBg: 'border-blue-900/40 bg-blue-950/20' },
+    { key: 'In-Assessment', label: 'In-Assessment', dotColor: 'bg-indigo-400', badgeClass: 'bg-indigo-900/40 text-indigo-300 border-indigo-800/50', headerBg: 'border-indigo-900/40 bg-indigo-950/20' },
+    { key: 'Interview', label: 'Interview', dotColor: 'bg-amber-400', badgeClass: 'bg-amber-900/40 text-amber-300 border-amber-800/50', headerBg: 'border-amber-900/40 bg-amber-950/20' },
+    { key: 'Offer', label: 'Offer', dotColor: 'bg-emerald-400', badgeClass: 'bg-emerald-900/40 text-emerald-300 border-emerald-800/50', headerBg: 'border-emerald-900/40 bg-emerald-950/20' },
+    { key: 'Rejected', label: 'Rejected', dotColor: 'bg-rose-400', badgeClass: 'bg-rose-900/40 text-rose-300 border-rose-800/50', headerBg: 'border-rose-900/40 bg-rose-950/20' }
+  ];
+
+  const filteredApplications = applications.filter(app => {
+    const opp = app.opportunity || {};
+    const titleMatch = (opp.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const companyMatch = (opp.company || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const queryMatches = !searchQuery.trim() || titleMatch || companyMatch;
+    const statusMatches = statusFilter === 'all' || app.status === statusFilter;
+    return queryMatches && statusMatches;
+  });
+
+  const getMatchScoreBadge = (score) => {
+    const num = Number(score) || 0;
+    if (num >= 80) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+    if (num >= 60) return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+    if (num >= 40) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+    return 'bg-slate-700/50 text-slate-300 border-slate-600/40';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-950/80 via-indigo-950/60 to-slate-900/90 p-5 md:p-6 border border-blue-500/20 backdrop-blur-xl shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5">
+                <Layers size={13} /> Application Pipeline
+              </span>
+              <span className="text-xs text-slate-400">Real-time Student Tracker</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Application Tracker & Pipeline</h2>
+            <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-xl">
+              Track your application milestones across six stages. Seamlessly launch technical assessments directly from active applications.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 text-center min-w-[90px] shadow-sm">
+              <p className="text-xs text-slate-400 font-medium">Total Tracked</p>
+              <p className="text-xl font-bold text-white">{applications.length}</p>
+            </div>
+            <div className="bg-indigo-950/50 border border-indigo-500/40 rounded-xl p-3 text-center min-w-[100px] shadow-sm">
+              <p className="text-xs text-indigo-400 font-medium">In Progress</p>
+              <p className="text-xl font-bold text-indigo-300">
+                {applications.filter(a => ['Applied', 'In-Assessment', 'Interview'].includes(a.status)).length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action & Filter Toolbar */}
+      <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter by job or company..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-800/80 border border-slate-600 rounded-xl text-xs md:text-sm focus:border-indigo-500 focus:outline-none placeholder:text-slate-500 text-white"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/80 border border-slate-600 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500"
+          >
+            <option value="all">All Stages ({applications.length})</option>
+            {columns.map(col => (
+              <option key={col.key} value={col.key}>
+                {col.label} ({applications.filter(a => a.status === col.key).length})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-800/80 border border-slate-700/60 rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === 'kanban'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                viewMode === 'list'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              List
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchApplications}
+            title="Refresh tracker"
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {actionFeedback && (
+        <div className={`p-3 rounded-xl border text-xs md:text-sm flex items-center justify-between ${
+          actionFeedback.isError
+            ? 'bg-rose-950/80 border-rose-500/40 text-rose-300'
+            : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+        }`}>
+          <span>{actionFeedback.message}</span>
+        </div>
+      )}
+
+      {loading && applications.length === 0 ? (
+        <div className="text-center py-16 bg-slate-900/40 rounded-2xl border border-slate-800">
+          <RefreshCw size={28} className="animate-spin text-indigo-400 mx-auto mb-3" />
+          <p className="text-sm text-slate-400">Loading your applications...</p>
+        </div>
+      ) : error ? (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-sm">
+          {error}
+        </div>
+      ) : applications.length === 0 ? (
+        <div className="text-center py-16 px-4 bg-slate-900/40 rounded-2xl border border-slate-800/60">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+            <Briefcase size={28} />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-1">No Applications Tracked Yet</h3>
+          <p className="text-sm text-slate-400 max-w-md mx-auto mb-6">
+            Explore verified opportunities matched with your skills and add them to your tracker or wishlist with one click.
+          </p>
+          <button
+            type="button"
+            onClick={() => setActivePortalTab('opportunities')}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-indigo-600/30 inline-flex items-center gap-2"
+          >
+            <Search size={16} />
+            <span>Discover Opportunities</span>
+          </button>
+        </div>
+      ) : viewMode === 'kanban' ? (
+        <div className="overflow-x-auto pb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-w-[320px] xl:min-w-[1240px]">
+            {columns.map(col => {
+              const colApps = filteredApplications.filter(a => a.status === col.key);
+              return (
+                <div
+                  key={col.key}
+                  className="flex flex-col bg-slate-900/60 rounded-2xl border border-slate-800/80 p-3 min-h-[350px] shadow-sm"
+                >
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-xl mb-3 border ${col.headerBg}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
+                      <span className="text-xs font-bold text-slate-200">{col.label}</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-slate-800 text-slate-300">
+                      {colApps.length}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 space-y-3 overflow-y-auto max-h-[700px] pr-1">
+                    {colApps.length === 0 ? (
+                      <div className="h-32 flex items-center justify-center border-2 border-dashed border-slate-800/60 rounded-xl text-center p-3">
+                        <p className="text-[11px] text-slate-500">No applications</p>
+                      </div>
+                    ) : (
+                      colApps.map(app => {
+                        const opp = app.opportunity || {};
+                        return (
+                          <div
+                            key={app.id}
+                            className="bg-slate-800/90 hover:bg-slate-800 border border-slate-700/60 rounded-xl p-3.5 space-y-2.5 transition-all shadow-md group relative"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="text-xs md:text-sm font-bold text-white line-clamp-1 group-hover:text-indigo-300 transition">
+                                  {opp.title || 'Role Title'}
+                                </h4>
+                                <p className="text-[11px] text-slate-400 font-medium">
+                                  {opp.company || 'Company'}
+                                </p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border shrink-0 ${getMatchScoreBadge(app.matchScore || app.matchPercentage)}`}>
+                                {app.matchScore || app.matchPercentage || 0}%
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                              <span className="px-1.5 py-0.5 bg-slate-900/60 rounded text-slate-300 capitalize">
+                                {opp.workType || 'onsite'}
+                              </span>
+                              <span className="truncate max-w-[110px]">
+                                {opp.location || 'Location'}
+                              </span>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-700/50 flex items-center justify-between text-[10px] text-slate-500">
+                              <span>{app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : 'Recent'}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleWithdraw(app.id)}
+                                title="Withdraw application"
+                                className="text-slate-500 hover:text-rose-400 transition"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+
+                            {col.key === 'In-Assessment' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActivePortalTab('pipeline');
+                                  setStage(app.pipelineStage || 'quiz');
+                                }}
+                                className="w-full mt-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow transition flex items-center justify-center gap-1.5"
+                              >
+                                <Zap size={12} className="text-amber-300" />
+                                <span>Continue Assessment</span>
+                              </button>
+                            )}
+
+                            <div className="pt-1">
+                              <select
+                                value={app.status}
+                                disabled={updatingId === app.id}
+                                onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                                className="w-full py-1 px-2 bg-slate-900/80 border border-slate-700 rounded-lg text-[10px] text-slate-300 focus:outline-none focus:border-indigo-500"
+                              >
+                                {columns.map(c => (
+                                  <option key={c.key} value={c.key}>
+                                    Move to {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredApplications.map(app => {
+            const opp = app.opportunity || {};
+            const curCol = columns.find(c => c.key === app.status) || columns[1];
+
+            return (
+              <div
+                key={app.id}
+                className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 transition shadow-md"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${curCol.badgeClass}`}>
+                        {app.status}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getMatchScoreBadge(app.matchScore || app.matchPercentage)}`}>
+                        {app.matchScore || app.matchPercentage || 0}% Match
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white">{opp.title || 'Role Title'}</h3>
+                    <p className="text-xs text-slate-400">
+                      {opp.company || 'Company'} • {opp.location || 'Location'} • <span className="capitalize">{opp.workType || 'onsite'}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {app.status === 'In-Assessment' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActivePortalTab('pipeline');
+                          setStage(app.pipelineStage || 'quiz');
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow"
+                      >
+                        <Zap size={13} className="text-amber-300" />
+                        <span>Continue Assessment</span>
+                      </button>
+                    )}
+
+                    <select
+                      value={app.status}
+                      disabled={updatingId === app.id}
+                      onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                      className="py-1.5 px-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      {columns.map(c => (
+                        <option key={c.key} value={c.key}>
+                          Status: {c.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => handleWithdraw(app.id)}
+                      className="p-2 rounded-xl bg-slate-800/80 hover:bg-rose-900/30 text-slate-400 hover:text-rose-400 border border-slate-700/60 transition"
+                      title="Withdraw application"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ==================== CANDIDATE PORTAL ====================
 function CandidatePortal({ setUserType, subscription, authState, logout }) {
+  const [activePortalTab, setActivePortalTab] = useState('opportunities');
   const [stage, setStage] = useState('profile');
   const [candidateData, setCandidateData] = useState({
     id: null,
@@ -957,97 +1891,172 @@ function CandidatePortal({ setUserType, subscription, authState, logout }) {
   return (
     <div className="min-h-screen px-4 py-4 md:py-6">
       <div className="max-w-5xl mx-auto mb-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-2xl font-bold md:text-3xl">Candidate Portal</h1>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold md:text-3xl">Digital Career Platform</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Student Portal
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-slate-400 mt-1">
+              Welcome back, {candidateData.name || 'Student'} • Explore jobs, track applications, and level up your skills.
+            </p>
+          </div>
           <button
             onClick={logout}
-            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50 md:w-auto md:text-base"
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50 md:w-auto md:text-base self-start md:self-auto"
           >
             <LogOut size={16} />
             Logout
           </button>
         </div>
-      </div>
 
-      {/* Perfectly Aligned Stepper Progress Bar */}
-      <div className="max-w-5xl mx-auto mb-10 overflow-x-auto px-2 pb-2">
-        <div className="min-w-[820px] relative">
-          {/* Background Track Line - positioned at vertical center of 40px circle (top: 20px) */}
-          <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-800 -translate-y-1/2 z-0">
-            {/* Active progress highlight fill */}
-            <div
-              className="h-full bg-gradient-to-r from-green-500 via-indigo-500 to-indigo-600 transition-all duration-500 ease-out"
-              style={{
-                width: `${Math.min(100, Math.max(0, (currentStageIndex / (stages.length - 1)) * 100))}%`
-              }}
-            />
-          </div>
-
-          {/* Stepper Nodes - mathematically distributed with justify-between */}
-          <div className="relative z-10 flex items-start justify-between">
-            {stages.map((s, idx) => {
-              const Icon = s.icon;
-              const isCompleted = idx < currentStageIndex;
-              const isCurrent = idx === currentStageIndex;
-
-              return (
-                <div
-                  key={s.id}
-                  className="flex flex-col items-center group cursor-pointer"
-                  onClick={() => {
-                    if (idx <= currentStageIndex) {
-                      setStage(s.id);
-                    }
-                  }}
-                  title={isCompleted ? `Return to ${s.label}` : isCurrent ? `Current: ${s.label}` : s.label}
-                >
-                  {/* Step Circle with crisp ring and elevation */}
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
-                      isCompleted
-                        ? 'bg-green-500 text-white shadow-green-500/25 ring-4 ring-slate-900'
-                        : isCurrent
-                        ? 'bg-indigo-600 text-white shadow-indigo-500/40 ring-4 ring-indigo-500/30 scale-110'
-                        : 'bg-slate-800 text-slate-400 border border-slate-700 ring-4 ring-slate-900 group-hover:border-slate-500 group-hover:text-slate-300'
-                    }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle size={20} />
-                    ) : (
-                      <Icon size={18} />
-                    )}
-                  </div>
-
-                  {/* Aligned Label with fixed width to prevent uneven spacing */}
-                  <span
-                    className={`mt-2.5 text-[11px] md:text-xs text-center w-20 md:w-24 leading-snug transition-colors ${
-                      isCurrent
-                        ? 'text-indigo-400 font-bold'
-                        : isCompleted
-                        ? 'text-slate-300 font-medium'
-                        : 'text-slate-500'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+        {/* Portal View Switcher Tabs */}
+        <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <button
+            type="button"
+            onClick={() => setActivePortalTab('opportunities')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 ${
+              activePortalTab === 'opportunities'
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white'
+            }`}
+          >
+            <Briefcase size={16} />
+            <span>Opportunity Discovery</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePortalTab('tracker')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 ${
+              activePortalTab === 'tracker'
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white'
+            }`}
+          >
+            <Layers size={16} />
+            <span>Application Tracker</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActivePortalTab('pipeline')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all flex items-center gap-2 ${
+              activePortalTab === 'pipeline'
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white'
+            }`}
+          >
+            <Award size={16} />
+            <span>9-Stage Assessment Pipeline</span>
+            {candidateData.totalScore > 0 && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 font-mono">
+                {candidateData.totalScore}%
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto w-full">
-        {stage === 'profile' && <ProfileStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
-        {stage === 'careerCoach' && <CareerGuidanceStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
-        {stage === 'resume' && <ResumeUploadStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
-        {stage === 'uploadVideo' && <UploadVideoStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
-        {stage === 'quiz' && <TechnicalQuizStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
-        {stage === 'interview' && <TextInterviewStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
-        {stage === 'video' && <VideoInterviewStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
-        {stage === 'results' && <ResultsStage candidateData={candidateData} authState={authState} setStage={setStage} />}
-        {stage === 'upgradeSkills' && <UpgradeSkillsStage candidateData={candidateData} authState={authState} setStage={setStage} />}
-      </div>
+      {activePortalTab === 'opportunities' ? (
+        <div className="max-w-5xl mx-auto w-full">
+          <OpportunityDiscovery
+            candidateData={candidateData}
+            authState={authState}
+            setActivePortalTab={setActivePortalTab}
+            setStage={setStage}
+          />
+        </div>
+      ) : activePortalTab === 'tracker' ? (
+        <div className="max-w-7xl mx-auto w-full">
+          <ApplicationTracker
+            candidateData={candidateData}
+            authState={authState}
+            setActivePortalTab={setActivePortalTab}
+            setStage={setStage}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Stepper Progress Bar */}
+          <div className="max-w-5xl mx-auto mb-10 overflow-x-auto px-2 pb-2">
+            <div className="min-w-[820px] relative">
+              {/* Background Track Line */}
+              <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-800 -translate-y-1/2 z-0">
+                {/* Active progress highlight fill */}
+                <div
+                  className="h-full bg-gradient-to-r from-green-500 via-indigo-500 to-indigo-600 transition-all duration-500 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (currentStageIndex / (stages.length - 1)) * 100))}%`
+                  }}
+                />
+              </div>
+
+              {/* Stepper Nodes */}
+              <div className="relative z-10 flex items-start justify-between">
+                {stages.map((s, idx) => {
+                  const Icon = s.icon;
+                  const isCompleted = idx < currentStageIndex;
+                  const isCurrent = idx === currentStageIndex;
+
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex flex-col items-center group cursor-pointer"
+                      onClick={() => {
+                        if (idx <= currentStageIndex) {
+                          setStage(s.id);
+                        }
+                      }}
+                      title={isCompleted ? `Return to ${s.label}` : isCurrent ? `Current: ${s.label}` : s.label}
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
+                          isCompleted
+                            ? 'bg-green-500 text-white shadow-green-500/25 ring-4 ring-slate-900'
+                            : isCurrent
+                            ? 'bg-indigo-600 text-white shadow-indigo-500/40 ring-4 ring-indigo-500/30 scale-110'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700 ring-4 ring-slate-900 group-hover:border-slate-500 group-hover:text-slate-300'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <CheckCircle size={20} />
+                        ) : (
+                          <Icon size={18} />
+                        )}
+                      </div>
+
+                      <span
+                        className={`mt-2.5 text-[11px] md:text-xs text-center w-20 md:w-24 leading-snug transition-colors ${
+                          isCurrent
+                            ? 'text-indigo-400 font-bold'
+                            : isCompleted
+                            ? 'text-slate-300 font-medium'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-3xl mx-auto w-full">
+            {stage === 'profile' && <ProfileStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
+            {stage === 'careerCoach' && <CareerGuidanceStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
+            {stage === 'resume' && <ResumeUploadStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
+            {stage === 'uploadVideo' && <UploadVideoStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
+            {stage === 'quiz' && <TechnicalQuizStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
+            {stage === 'interview' && <TextInterviewStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} authState={authState} />}
+            {stage === 'video' && <VideoInterviewStage candidateData={candidateData} setCandidateData={setCandidateData} setStage={setStage} />}
+            {stage === 'results' && <ResultsStage candidateData={candidateData} authState={authState} setStage={setStage} />}
+            {stage === 'upgradeSkills' && <UpgradeSkillsStage candidateData={candidateData} authState={authState} setStage={setStage} />}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -5785,6 +6794,305 @@ function BlockchainChatPanel({ authState, fixedPeerId = null, title, subtitle })
   );
 }
 
+// ==================== TPO / INSTITUTION ANALYTICS MODULE ====================
+function TPOAnalyticsDashboard({ authState }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/tpo/analytics`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState?.token}`
+        }
+      });
+      const parsed = await parseApiJson(res);
+      if (!res.ok || !parsed.success) {
+        throw new Error(parsed.error || 'Failed to fetch institutional analytics');
+      }
+      setData(parsed.data);
+    } catch (err) {
+      console.error('TPO Analytics fetch error:', err);
+      setError(err.message || 'Unable to load analytics.');
+    } finally {
+      setLoading(false);
+    }
+  }, [authState?.token]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const batch = data?.batchReadiness || {
+    totalStudents: 0,
+    assessedStudentsCount: 0,
+    assessmentRate: 0,
+    averageReadinessScore: 0,
+    industryReadyCount: 0,
+    developingCount: 0,
+    needsTrainingCount: 0
+  };
+
+  const funnel = data?.placementFunnel || {
+    totalApplications: 0,
+    stages: { Wishlist: 0, Applied: 0, 'In-Assessment': 0, Interview: 0, Offer: 0, Rejected: 0 },
+    offerConversionRate: 0
+  };
+
+  const skillGap = data?.skillGapHeatmap || {
+    topMissingSkills: [],
+    topMasteredSkills: [],
+    totalOpportunitiesTracked: 0
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/60 to-slate-900/90 p-5 md:p-6 border border-purple-500/20 backdrop-blur-xl shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1.5">
+                <BarChart2 size={13} /> Institutional Intelligence
+              </span>
+              <span className="text-xs text-slate-400">TPO & Placement Command Center</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white">Institutional Placement & Cohort Analytics</h2>
+            <p className="text-xs md:text-sm text-slate-300 mt-1 max-w-xl">
+              Real-time telemetry across student skill readiness, placement conversion funnels, and aggregate curriculum gap heatmaps.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchAnalytics}
+            className="self-start md:self-auto min-h-[42px] px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition flex items-center gap-2 shadow-md shadow-indigo-600/30"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh Analytics</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* 4 Batch Readiness Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Total Students</p>
+          <p className="text-3xl font-black text-white mt-1">{batch.totalStudents}</p>
+          <p className="text-xs text-slate-400 mt-2">Registered in cohort</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Assessed Students</p>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              {batch.assessmentRate}% Rate
+            </span>
+          </div>
+          <p className="text-3xl font-black text-indigo-400 mt-1">{batch.assessedStudentsCount}</p>
+          <p className="text-xs text-slate-400 mt-2">Completed assessment stages</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Average Readiness</p>
+          <p className="text-3xl font-black text-amber-400 mt-1">{batch.averageReadinessScore}%</p>
+          <p className="text-xs text-slate-400 mt-2">Across 9-stage technical benchmark</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-700/60 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Industry Ready</p>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Score ≥ 75%
+            </span>
+          </div>
+          <p className="text-3xl font-black text-emerald-400 mt-1">{batch.industryReadyCount}</p>
+          <p className="text-xs text-slate-400 mt-2">Qualified for direct interview referral</p>
+        </div>
+      </div>
+
+      {/* Placement Funnel Section */}
+      <div className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-6 shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <TrendingUp size={18} className="text-indigo-400" />
+              <span>Placement Conversion Funnel</span>
+            </h3>
+            <p className="text-xs md:text-sm text-slate-400 mt-0.5">
+              Cumulative progression of all student applications across partner companies
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs font-bold text-emerald-300">
+              Offer Conversion: {funnel.offerConversionRate}%
+            </div>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-300 font-mono">
+              {funnel.totalApplications} Total Applications
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: 'Wishlist', count: funnel.stages?.Wishlist || 0, color: 'text-slate-300', barBg: 'bg-slate-600', border: 'border-slate-700' },
+            { label: 'Applied', count: funnel.stages?.Applied || 0, color: 'text-blue-300', barBg: 'bg-blue-500', border: 'border-blue-800/60' },
+            { label: 'In-Assessment', count: funnel.stages?.['In-Assessment'] || 0, color: 'text-indigo-300', barBg: 'bg-indigo-500', border: 'border-indigo-800/60' },
+            { label: 'Interview', count: funnel.stages?.Interview || 0, color: 'text-amber-300', barBg: 'bg-amber-500', border: 'border-amber-800/60' },
+            { label: 'Offer', count: funnel.stages?.Offer || 0, color: 'text-emerald-300', barBg: 'bg-emerald-500', border: 'border-emerald-800/60' },
+            { label: 'Rejected', count: funnel.stages?.Rejected || 0, color: 'text-rose-300', barBg: 'bg-rose-500', border: 'border-rose-800/60' }
+          ].map((stage, idx) => {
+            const pct = funnel.totalApplications > 0
+              ? Math.round((stage.count / funnel.totalApplications) * 100)
+              : 0;
+            return (
+              <div key={idx} className={`bg-slate-800/70 border ${stage.border} rounded-xl p-3.5 flex flex-col justify-between`}>
+                <div>
+                  <p className="text-xs text-slate-400 font-medium">{stage.label}</p>
+                  <p className={`text-2xl font-black mt-1 ${stage.color}`}>{stage.count}</p>
+                </div>
+                <div className="mt-3">
+                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-full ${stage.barBg}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1 text-right">{pct}%</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Cohort Skill-Gap Heatmap */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-6 shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <AlertTriangle size={17} className="text-rose-400" />
+                <span>Top Industry Skill Deficits</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">High-demand skills missing in student cohort</p>
+            </div>
+            <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              Needs Training
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {skillGap.topMissingSkills && skillGap.topMissingSkills.length > 0 ? (
+              skillGap.topMissingSkills.slice(0, 7).map((item, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-200">{item.skill}</span>
+                    <span className="text-rose-400 font-mono text-[11px]">{item.count} gap instances</span>
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (item.count / Math.max(1, skillGap.topMissingSkills[0]?.count || 1)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-500 italic py-4 text-center">No aggregate skill gaps detected</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-slate-900/70 border border-slate-700/60 rounded-2xl p-6 shadow-md">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <CheckCircle size={17} className="text-emerald-400" />
+                <span>Top Verified Cohort Strengths</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Most prevalent technical skills in student profiles</p>
+            </div>
+            <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Proficient
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {skillGap.topMasteredSkills && skillGap.topMasteredSkills.length > 0 ? (
+              skillGap.topMasteredSkills.slice(0, 7).map((item, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-200">{item.skill}</span>
+                    <span className="text-emerald-400 font-mono text-[11px]">{item.count} students</span>
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (item.count / Math.max(1, skillGap.topMasteredSkills[0]?.count || 1)) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-500 italic py-4 text-center">No profile skills registered yet</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Institutional Action Plan */}
+      <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-6 shadow-md">
+        <h3 className="text-base font-bold text-white flex items-center gap-2 mb-3">
+          <Sparkles size={18} className="text-amber-300" />
+          <span>TPO Actionable Recommendations</span>
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+              Curriculum Priority
+            </span>
+            <h4 className="text-xs md:text-sm font-bold text-white mt-2">Targeted Workshops</h4>
+            <p className="text-xs text-slate-400 mt-1">
+              Host intensive weekend bootcamps on {skillGap.topMissingSkills?.[0]?.skill || 'Cloud & System Design'} to boost student qualification rates.
+            </p>
+          </div>
+
+          <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Assessment Drive
+            </span>
+            <h4 className="text-xs md:text-sm font-bold text-white mt-2">Encourage 9-Stage Completion</h4>
+            <p className="text-xs text-slate-400 mt-1">
+              {batch.totalStudents - batch.assessedStudentsCount} students have not completed technical benchmarks. Send reminders to increase placement readiness.
+            </p>
+          </div>
+
+          <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Recruiter Alignment
+            </span>
+            <h4 className="text-xs md:text-sm font-bold text-white mt-2">Highlight Ready Talent</h4>
+            <p className="text-xs text-slate-400 mt-1">
+              Present the {batch.industryReadyCount} industry-ready candidates directly to verified recruiting partners for high-conversion hiring.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ==================== SUPER-ADMIN DASHBOARD ====================
 function SuperAdminDashboard({ authState, logout }) {
   const [recruiters, setRecruiters] = useState([]);
@@ -5962,13 +7270,13 @@ function SuperAdminDashboard({ authState, logout }) {
       {/* Tabs */}
       <div className="max-w-7xl mx-auto">
         <div className="mb-5 flex flex-wrap gap-2">
-          {['recruiters', 'candidates', 'questions', 'resources', 'chat'].map(tab => (
+          {['recruiters', 'candidates', 'questions', 'resources', 'chat', 'analytics'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`min-h-[44px] px-5 py-2 rounded-xl font-semibold text-sm md:text-base capitalize transition-all ${
                 activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
               }`}>
               <span className="inline-flex items-center gap-2 capitalize">
-                {tab}
+                {tab === 'analytics' ? 'TPO Analytics' : tab}
                 {tab === 'chat' && <ChatUnreadBadge authState={authState} />}
               </span>
             </button>
@@ -6227,6 +7535,10 @@ function SuperAdminDashboard({ authState, logout }) {
             title="Recruiter ↔ Superadmin Chat"
             subtitle="Near real-time secure messaging with tamper-evident blockchain-style message chaining."
           />
+        )}
+
+        {activeTab === 'analytics' && (
+          <TPOAnalyticsDashboard authState={authState} />
         )}
       </div>
     </div>

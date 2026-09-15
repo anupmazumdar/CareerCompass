@@ -71,6 +71,15 @@ const adminRateLimiter = rateLimit({
   message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Admin rate limit exceeded.' }
 });
 
+// Opportunity search limiter: 60 / min
+const opportunityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Too many opportunity requests. Please slow down.' }
+});
+
 // 4. Input Sanitization
 const sanitizeMiddleware = [
   mongoSanitize({ replaceWith: '_' }),
@@ -85,5 +94,6 @@ module.exports = {
   authRateLimiter,
   aiRateLimiter,
   adminRateLimiter,
+  opportunityLimiter,
   sanitizeMiddleware
 };

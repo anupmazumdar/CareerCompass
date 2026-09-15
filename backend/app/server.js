@@ -66,6 +66,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/recruiters', recruiterRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/opportunities', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/matching', matchingRoutes);

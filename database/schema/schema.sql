@@ -137,6 +137,27 @@ CREATE TABLE IF NOT EXISTS student_skills (
     UNIQUE(student_id, skill_id)
 );
 
+CREATE TABLE IF NOT EXISTS opportunities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    company TEXT NOT NULL,
+    company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    description TEXT NOT NULL,
+    required_skills TEXT NOT NULL, -- JSON array of strings
+    location TEXT NOT NULL,
+    work_type TEXT NOT NULL DEFAULT 'onsite' CHECK (work_type IN ('remote', 'onsite', 'hybrid')),
+    employment_type TEXT NOT NULL DEFAULT 'full-time' CHECK (employment_type IN ('full-time', 'internship', 'contract')),
+    experience_level TEXT DEFAULT 'entry' CHECK (experience_level IN ('entry', 'mid', 'senior')),
+    min_salary REAL,
+    max_salary REAL,
+    deadline DATETIME,
+    posted_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- recruiter_id, nullable for admin-seeded listings
+    status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'closed')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -192,15 +213,18 @@ CREATE TABLE IF NOT EXISTS resume_analysis (
 
 CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
+    job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     resume_id INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('applied', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected')),
-    match_score REAL,
+    status TEXT NOT NULL DEFAULT 'Applied' CHECK (status IN ('Wishlist', 'Applied', 'In-Assessment', 'Interview', 'Offer', 'Rejected', 'applied', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected')),
+    match_score REAL DEFAULT 0,
     cover_note TEXT,
+    notes TEXT,
+    pipeline_stage TEXT DEFAULT 'profile',
     applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(job_id, student_id)
+    applied_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS application_status_history (

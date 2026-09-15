@@ -26,6 +26,7 @@ const {
   globalRateLimiter,
   authRateLimiter,
   adminRateLimiter,
+  opportunityLimiter,
   sanitizeMiddleware,
 } = require('./middleware/security');
 const { morganMiddleware } = require('./middleware/logger');
@@ -306,6 +307,8 @@ let upgradeResources = []; // Superadmin-managed YouTube/video resources by role
 let chatMessages = []; // Recruiter <-> superadmin messages with hash chain integrity
 let chatReadStates = []; // Per-user read checkpoints for unread counts
 let authAuditLogs = []; // Auth/session security audit events
+let opportunities = []; // Digital Career Platform job opportunities
+let applications = []; // Student applications across stages
 let quizSettings = {
   candidateDurationMinutes: 30,
   recruiterDurationMinutes: 30,
@@ -318,6 +321,147 @@ let subscriptionId = 1;
 let questionId = 1;
 let upgradeResourceId = 1;
 let chatMessageId = 1;
+let opportunityId = 1;
+let applicationId = 1;
+
+const DEFAULT_OPPORTUNITIES = [
+  {
+    id: 1,
+    title: 'Full Stack Engineer',
+    company: 'Razorpay',
+    description: 'Build robust payment APIs, checkout workflows, and merchant dashboard features using React, Node.js, and distributed microservices.',
+    requiredSkills: ['React', 'Node.js', 'TypeScript', 'PostgreSQL', 'REST APIs', 'System Design'],
+    location: 'Bangalore, India',
+    workType: 'hybrid',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 1200000,
+    maxSalary: 1800000,
+    deadline: '2026-11-30T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-01T09:00:00.000Z'
+  },
+  {
+    id: 2,
+    title: 'Frontend Developer',
+    company: 'Zoho Corporation',
+    description: 'Design and implement accessible, high-performance UI components for enterprise cloud software using modern React, CSS, and Tailwind CSS.',
+    requiredSkills: ['HTML', 'CSS', 'JavaScript', 'React', 'Tailwind CSS', 'Accessibility'],
+    location: 'Chennai, India',
+    workType: 'onsite',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 800000,
+    maxSalary: 1200000,
+    deadline: '2026-10-15T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-02T10:00:00.000Z'
+  },
+  {
+    id: 3,
+    title: 'Backend Systems Engineer',
+    company: 'Freshworks',
+    description: 'Scale multi-tenant customer engagement services, database caching layers, and real-time webhook systems.',
+    requiredSkills: ['Node.js', 'Express', 'MongoDB', 'Redis', 'Authentication', 'System Design'],
+    location: 'Chennai, India',
+    workType: 'hybrid',
+    employmentType: 'full-time',
+    experienceLevel: 'mid',
+    minSalary: 1400000,
+    maxSalary: 2200000,
+    deadline: '2026-12-01T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-03T11:30:00.000Z'
+  },
+  {
+    id: 4,
+    title: 'Software Development Engineer',
+    company: 'Microsoft',
+    description: 'Work on core cloud services, developer productivity tools, and scalable distributed systems with global reach.',
+    requiredSkills: ['Data Structures', 'Algorithms', 'Java', 'Python', 'Git', 'Problem Solving'],
+    location: 'Hyderabad, India',
+    workType: 'onsite',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 1600000,
+    maxSalary: 2600000,
+    deadline: '2026-11-15T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-04T12:00:00.000Z'
+  },
+  {
+    id: 5,
+    title: 'Data Scientist / ML Engineer',
+    company: 'Flipkart',
+    description: 'Develop recommendation algorithms, demand forecasting models, and customer search ranking systems with large-scale datasets.',
+    requiredSkills: ['Python', 'Machine Learning', 'SQL', 'Pandas', 'Statistics', 'Scikit-learn'],
+    location: 'Bangalore, India',
+    workType: 'onsite',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 1500000,
+    maxSalary: 2400000,
+    deadline: '2026-10-31T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-05T14:00:00.000Z'
+  },
+  {
+    id: 6,
+    title: 'Cloud & DevOps Associate',
+    company: 'Infosys',
+    description: 'Automate deployment pipelines, manage containerized clusters on Kubernetes and AWS, and implement observability systems.',
+    requiredSkills: ['Linux', 'Docker', 'Kubernetes', 'CI/CD', 'AWS', 'Cloud'],
+    location: 'Pune, India',
+    workType: 'hybrid',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 700000,
+    maxSalary: 1100000,
+    deadline: '2026-11-20T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-06T15:00:00.000Z'
+  },
+  {
+    id: 7,
+    title: 'UI/UX Product Designer',
+    company: 'Swiggy',
+    description: 'Craft intuitive consumer experiences, design interactive prototypes in Figma, and build cohesive design systems for millions of daily active users.',
+    requiredSkills: ['Figma', 'UI/UX Design', 'Design Systems', 'User Research', 'Prototyping'],
+    location: 'Remote',
+    workType: 'remote',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: 1000000,
+    maxSalary: 1600000,
+    deadline: '2026-12-15T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-07T16:00:00.000Z'
+  },
+  {
+    id: 8,
+    title: 'AI Systems Engineer',
+    company: 'Google',
+    description: 'Build agentic AI pipelines, LLM routing infrastructures, and intelligent automation services with state-of-the-art benchmarks.',
+    requiredSkills: ['Python', 'Machine Learning', 'Deep Learning', 'PyTorch', 'REST APIs', 'System Design'],
+    location: 'Bangalore, India',
+    workType: 'hybrid',
+    employmentType: 'full-time',
+    experienceLevel: 'mid',
+    minSalary: 2200000,
+    maxSalary: 3500000,
+    deadline: '2026-12-31T23:59:59Z',
+    postedBy: null,
+    status: 'published',
+    createdAt: '2026-03-08T17:00:00.000Z'
+  }
+];
 
 // Load data from cloud on startup
 async function initializeData() {
@@ -330,6 +474,14 @@ async function initializeData() {
   chatReadStates = await loadDataFromCloud('chatReadStates.json', []);
   authAuditLogs = await loadDataFromCloud('authAuditLogs.json', []);
   quizSettings = await loadDataFromCloud('quizSettings.json', quizSettings);
+  opportunities = await loadDataFromCloud('opportunities.json', []);
+  applications = await loadDataFromCloud('applications.json', []);
+
+  // Seed default opportunities if none exist
+  if (!Array.isArray(opportunities) || opportunities.length === 0) {
+    opportunities = [...DEFAULT_OPPORTUNITIES];
+    await saveOpportunities();
+  }
 
   // Set IDs to max + 1
   if (users.length > 0) userId = Math.max(...users.map(u => u.id)) + 1;
@@ -338,10 +490,12 @@ async function initializeData() {
   if (questionBank.length > 0) questionId = Math.max(...questionBank.map(q => q.id)) + 1;
   if (upgradeResources.length > 0) upgradeResourceId = Math.max(...upgradeResources.map(r => r.id)) + 1;
   if (chatMessages.length > 0) chatMessageId = Math.max(...chatMessages.map(m => m.id)) + 1;
+  if (opportunities.length > 0) opportunityId = Math.max(...opportunities.map(o => o.id)) + 1;
+  if (applications.length > 0) applicationId = Math.max(...applications.map(a => a.id)) + 1;
 
   await ensureSuperAdminAccount();
 
-  console.log(`📊 Data loaded: ${users.length} users, ${candidates.length} candidates, ${questionBank.length} questions`);
+  console.log(`📊 Data loaded: ${users.length} users, ${candidates.length} candidates, ${opportunities.length} opportunities, ${applications.length} applications, ${questionBank.length} questions`);
 }
 
 let dataReadyPromise = null;
@@ -425,6 +579,14 @@ async function saveAuthAuditLogs() {
 
 async function saveQuizSettings() {
   await saveDataToCloud('quizSettings.json', quizSettings);
+}
+
+async function saveOpportunities() {
+  await saveDataToCloud('opportunities.json', opportunities);
+}
+
+async function saveApplications() {
+  await saveDataToCloud('applications.json', applications);
 }
 
 app.use(async (req, res, next) => {
@@ -1461,6 +1623,733 @@ app.post('/api/subscriptions', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Subscription error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ==================== OPPORTUNITY DISCOVERY & SKILL MATCHING ====================
+
+function extractCandidateSkillSet(candidate) {
+  const skills = new Set();
+
+  if (candidate) {
+    if (Array.isArray(candidate.skills)) {
+      candidate.skills.forEach(s => skills.add(String(s).trim()));
+    }
+    if (candidate.position) {
+      const roleDefaults = CAREER_COACH_ROLE_SKILLS[candidate.position] || [];
+      roleDefaults.forEach(s => skills.add(String(s).trim()));
+    }
+    if (candidate.upgradeSkillsPlan?.weakAreas && Array.isArray(candidate.upgradeSkillsPlan.weakAreas)) {
+      candidate.upgradeSkillsPlan.weakAreas.forEach(w => skills.add(String(w).trim()));
+    }
+  }
+
+  // Fallback defaults if candidate has not completed profile/stages yet
+  if (skills.size === 0) {
+    ['JavaScript', 'React', 'HTML', 'CSS', 'Node.js', 'Git', 'Problem Solving'].forEach(s => skills.add(s));
+  }
+
+  return Array.from(skills);
+}
+
+function calculateOpportunityMatch(studentSkills = [], requiredSkills = []) {
+  const req = Array.isArray(requiredSkills) ? requiredSkills : [];
+  if (req.length === 0) {
+    return {
+      matchPercentage: 85,
+      matchedSkills: [],
+      missingSkills: []
+    };
+  }
+
+  const normalizedStudent = studentSkills.map(s => String(s || '').toLowerCase().trim());
+  const matched = [];
+  const missing = [];
+
+  for (const r of req) {
+    const rTrimmed = String(r || '').trim();
+    const rLower = rTrimmed.toLowerCase();
+    const isMatched = normalizedStudent.some(cand =>
+      cand === rLower || cand.includes(rLower) || rLower.includes(cand)
+    );
+    if (isMatched) {
+      matched.push(rTrimmed);
+    } else {
+      missing.push(rTrimmed);
+    }
+  }
+
+  const matchPercentage = Math.round((matched.length / req.length) * 100);
+  return {
+    matchPercentage: Math.max(0, Math.min(100, matchPercentage)),
+    matchedSkills: matched,
+    missingSkills: missing
+  };
+}
+
+// GET /api/opportunities — Browse, search & filter listings (Rate limited)
+app.get('/api/opportunities', opportunityLimiter, (req, res) => {
+  try {
+    const search = String(req.query.search || '').trim().toLowerCase();
+    const location = String(req.query.location || '').trim().toLowerCase();
+    const workType = String(req.query.workType || '').trim().toLowerCase(); // 'remote', 'onsite', 'hybrid'
+    const roleType = String(req.query.roleType || '').trim().toLowerCase();
+    const minMatch = Number(req.query.minMatch) || 0;
+
+    // Optional student context from Authorization header
+    let currentCandidate = null;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const currentUser = users.find(u => u.id === decoded.userId || u.email === decoded.email);
+        if (currentUser && ['candidate', 'student'].includes(currentUser.userType)) {
+          currentCandidate = candidates.find(c => c.id === currentUser.id || c.email === currentUser.email) || null;
+        }
+      } catch (_) { /* invalid or expired token is ignored for public browsing */ }
+    }
+
+    const studentSkills = currentCandidate ? extractCandidateSkillSet(currentCandidate) : [];
+
+    let results = opportunities.filter(op => op.status !== 'closed');
+
+    if (search) {
+      results = results.filter(op =>
+        (op.title && op.title.toLowerCase().includes(search)) ||
+        (op.company && op.company.toLowerCase().includes(search)) ||
+        (op.description && op.description.toLowerCase().includes(search)) ||
+        (Array.isArray(op.requiredSkills) && op.requiredSkills.some(s => s.toLowerCase().includes(search)))
+      );
+    }
+
+    if (location && location !== 'all') {
+      results = results.filter(op =>
+        op.location && op.location.toLowerCase().includes(location)
+      );
+    }
+
+    if (workType && workType !== 'all') {
+      results = results.filter(op =>
+        op.workType && op.workType.toLowerCase() === workType
+      );
+    }
+
+    if (roleType && roleType !== 'all') {
+      results = results.filter(op =>
+        (op.title && op.title.toLowerCase().includes(roleType)) ||
+        (op.experienceLevel && op.experienceLevel.toLowerCase() === roleType)
+      );
+    }
+
+    // Attach dynamic match evaluation
+    const mapped = results.map(op => {
+      const match = calculateOpportunityMatch(studentSkills, op.requiredSkills);
+      return {
+        ...op,
+        matchPercentage: match.matchPercentage,
+        matchedSkills: match.matchedSkills,
+        missingSkills: match.missingSkills
+      };
+    });
+
+    // Apply minMatch filter if requested
+    const filtered = minMatch > 0
+      ? mapped.filter(op => op.matchPercentage >= minMatch)
+      : mapped;
+
+    // Sort by match percentage descending if logged in as student, else newest
+    if (currentCandidate) {
+      filtered.sort((a, b) => b.matchPercentage - a.matchPercentage || String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    } else {
+      filtered.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    }
+
+    return res.json({
+      success: true,
+      count: filtered.length,
+      opportunities: filtered
+    });
+  } catch (error) {
+    console.error('Opportunities list error:', error);
+    return res.status(500).json({ error: 'Failed to fetch opportunities' });
+  }
+});
+
+// GET /api/opportunities/:id — Single listing details
+app.get('/api/opportunities/:id', opportunityLimiter, (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const opportunity = opportunities.find(op => op.id === id);
+    if (!opportunity) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    let currentCandidate = null;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const currentUser = users.find(u => u.id === decoded.userId || u.email === decoded.email);
+        if (currentUser && ['candidate', 'student'].includes(currentUser.userType)) {
+          currentCandidate = candidates.find(c => c.id === currentUser.id || c.email === currentUser.email) || null;
+        }
+      } catch (_) {}
+    }
+
+    const studentSkills = currentCandidate ? extractCandidateSkillSet(currentCandidate) : [];
+    const match = calculateOpportunityMatch(studentSkills, opportunity.requiredSkills);
+
+    return res.json({
+      success: true,
+      opportunity: {
+        ...opportunity,
+        matchPercentage: match.matchPercentage,
+        matchedSkills: match.matchedSkills,
+        missingSkills: match.missingSkills
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch opportunity' });
+  }
+});
+
+// POST /api/opportunities — Create opportunity (recruiter / superadmin)
+app.post('/api/opportunities', authenticateToken, async (req, res) => {
+  try {
+    const allowed = ['recruiter', 'superadmin'];
+    if (!allowed.includes(req.user?.userType)) {
+      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    }
+
+    const title = String(req.body.title || '').trim();
+    const company = String(req.body.company || req.user.company || '').trim();
+    const description = String(req.body.description || '').trim();
+    const location = String(req.body.location || '').trim();
+    const workType = ['remote', 'onsite', 'hybrid'].includes(String(req.body.workType).toLowerCase())
+      ? String(req.body.workType).toLowerCase()
+      : 'onsite';
+    const employmentType = String(req.body.employmentType || 'full-time').toLowerCase();
+    const experienceLevel = String(req.body.experienceLevel || 'entry').toLowerCase();
+    const minSalary = Number(req.body.minSalary) || null;
+    const maxSalary = Number(req.body.maxSalary) || null;
+    const deadline = req.body.deadline || null;
+
+    let requiredSkills = [];
+    if (Array.isArray(req.body.requiredSkills)) {
+      requiredSkills = req.body.requiredSkills.map(s => String(s || '').trim()).filter(Boolean);
+    } else if (typeof req.body.requiredSkills === 'string') {
+      requiredSkills = req.body.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    if (!title || !company || !description || !location) {
+      return res.status(400).json({ error: 'title, company, description, and location are required' });
+    }
+
+    if (requiredSkills.length === 0) {
+      return res.status(400).json({ error: 'At least one required skill is required' });
+    }
+
+    const newOpportunity = {
+      id: opportunityId++,
+      title,
+      company,
+      description,
+      requiredSkills,
+      location,
+      workType,
+      employmentType,
+      experienceLevel,
+      minSalary,
+      maxSalary,
+      deadline,
+      postedBy: req.user.userId || req.user.id || null,
+      status: 'published',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    opportunities.unshift(newOpportunity);
+    await saveOpportunities();
+
+    return res.status(201).json({
+      success: true,
+      opportunity: newOpportunity,
+      message: 'Opportunity posted successfully'
+    });
+  } catch (error) {
+    console.error('Create opportunity error:', error);
+    return res.status(500).json({ error: 'Failed to create opportunity' });
+  }
+});
+
+// PUT /api/opportunities/:id — Update opportunity
+app.put('/api/opportunities/:id', authenticateToken, async (req, res) => {
+  try {
+    const allowed = ['recruiter', 'superadmin'];
+    if (!allowed.includes(req.user?.userType)) {
+      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    }
+
+    const id = parseInt(req.params.id);
+    const idx = opportunities.findIndex(op => op.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    const existing = opportunities[idx];
+
+    // Recruiter can only update their own listings; superadmin can update any
+    if (req.user.userType === 'recruiter' && existing.postedBy && existing.postedBy !== req.user.userId) {
+      return res.status(403).json({ error: 'You can only edit your own opportunity postings' });
+    }
+
+    let requiredSkills = existing.requiredSkills;
+    if (req.body.requiredSkills) {
+      if (Array.isArray(req.body.requiredSkills)) {
+        requiredSkills = req.body.requiredSkills.map(s => String(s || '').trim()).filter(Boolean);
+      } else if (typeof req.body.requiredSkills === 'string') {
+        requiredSkills = req.body.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    opportunities[idx] = {
+      ...existing,
+      title: req.body.title ? String(req.body.title).trim() : existing.title,
+      company: req.body.company ? String(req.body.company).trim() : existing.company,
+      description: req.body.description ? String(req.body.description).trim() : existing.description,
+      location: req.body.location ? String(req.body.location).trim() : existing.location,
+      workType: req.body.workType ? String(req.body.workType).toLowerCase() : existing.workType,
+      employmentType: req.body.employmentType ? String(req.body.employmentType).toLowerCase() : existing.employmentType,
+      experienceLevel: req.body.experienceLevel ? String(req.body.experienceLevel).toLowerCase() : existing.experienceLevel,
+      minSalary: req.body.minSalary !== undefined ? Number(req.body.minSalary) : existing.minSalary,
+      maxSalary: req.body.maxSalary !== undefined ? Number(req.body.maxSalary) : existing.maxSalary,
+      deadline: req.body.deadline !== undefined ? req.body.deadline : existing.deadline,
+      status: req.body.status ? String(req.body.status).toLowerCase() : existing.status,
+      requiredSkills,
+      updatedAt: new Date().toISOString()
+    };
+
+    await saveOpportunities();
+
+    return res.json({
+      success: true,
+      opportunity: opportunities[idx],
+      message: 'Opportunity updated successfully'
+    });
+  } catch (error) {
+    console.error('Update opportunity error:', error);
+    return res.status(500).json({ error: 'Failed to update opportunity' });
+  }
+});
+
+// DELETE /api/opportunities/:id — Delete opportunity (with CASCADE delete for applications)
+app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
+  try {
+    const allowed = ['recruiter', 'superadmin'];
+    if (!allowed.includes(req.user?.userType)) {
+      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    }
+
+    const id = parseInt(req.params.id);
+    const existing = opportunities.find(op => op.id === id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    if (req.user.userType === 'recruiter' && existing.postedBy && existing.postedBy !== req.user.userId) {
+      return res.status(403).json({ error: 'You can only delete your own opportunity postings' });
+    }
+
+    // CASCADE DELETE: Remove linked applications
+    const initialAppCount = applications.length;
+    applications = applications.filter(a => a.opportunityId !== id && a.opportunity_id !== id && a.jobId !== id);
+    if (applications.length !== initialAppCount) {
+      await saveApplications();
+    }
+
+    opportunities = opportunities.filter(op => op.id !== id);
+    await saveOpportunities();
+
+    return res.json({
+      success: true,
+      message: 'Opportunity and linked applications removed successfully'
+    });
+  } catch (error) {
+    console.error('Delete opportunity error:', error);
+    return res.status(500).json({ error: 'Failed to delete opportunity' });
+  }
+});
+
+// ==================== APPLICATION TRACKER ROUTES ====================
+
+const VALID_APP_STATUSES = ['Wishlist', 'Applied', 'In-Assessment', 'Interview', 'Offer', 'Rejected'];
+
+// GET /api/applications/my-applications — student applications with opportunity details & match
+app.get('/api/applications/my-applications', authenticateToken, (req, res) => {
+  try {
+    const isStudent = ['candidate', 'student'].includes(req.user?.userType);
+    if (!isStudent && req.user?.userType !== 'superadmin') {
+      return res.status(403).json({ error: 'Student access required' });
+    }
+
+    const email = (req.user?.email || '').toLowerCase();
+    const userId = req.user?.userId || req.user?.id;
+
+    // Find candidate record to evaluate real-time skill matching & pipeline stage
+    const candidate = candidates.find(c =>
+      (c.email && c.email.toLowerCase() === email) || c.id === userId
+    );
+    const candidateSkills = candidate ? extractCandidateSkillSet(candidate) : [];
+
+    // Filter applications for current user (superadmin sees all if ?all=true, else user's)
+    let userApps = applications.filter(a =>
+      (a.candidateEmail && a.candidateEmail.toLowerCase() === email) ||
+      a.candidateId === userId
+    );
+
+    if (req.user?.userType === 'superadmin' && req.query.all === 'true') {
+      userApps = applications;
+    }
+
+    const enriched = userApps.map(appItem => {
+      const opp = opportunities.find(o => o.id === appItem.opportunityId);
+      const match = opp ? calculateOpportunityMatch(candidateSkills, opp.requiredSkills) : { matchPercentage: appItem.matchScore || 0, matchedSkills: [], missingSkills: [] };
+
+      return {
+        ...appItem,
+        opportunity: opp || {
+          id: appItem.opportunityId,
+          title: 'Opportunity (Archived)',
+          company: 'Unknown',
+          location: 'N/A',
+          workType: 'onsite',
+          requiredSkills: []
+        },
+        matchPercentage: match.matchPercentage,
+        matchedSkills: match.matchedSkills,
+        missingSkills: match.missingSkills,
+        pipelineStage: candidate?.stage || 'quiz'
+      };
+    });
+
+    return res.json({
+      success: true,
+      count: enriched.length,
+      applications: enriched
+    });
+  } catch (error) {
+    console.error('Fetch my-applications error:', error);
+    return res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// POST /api/applications — create application or add to tracker
+app.post('/api/applications', authenticateToken, async (req, res) => {
+  try {
+    const isStudent = ['candidate', 'student'].includes(req.user?.userType);
+    if (!isStudent) {
+      return res.status(403).json({ error: 'Student access required to submit application' });
+    }
+
+    const { opportunityId: reqOppId, status = 'Applied', notes = '' } = req.body;
+    const oppId = parseInt(reqOppId);
+
+    if (isNaN(oppId)) {
+      return res.status(400).json({ error: 'Valid opportunityId is required' });
+    }
+
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) {
+      return res.status(404).json({ error: 'Opportunity not found' });
+    }
+
+    const email = (req.user?.email || '').toLowerCase();
+    const userId = req.user?.userId || req.user?.id;
+
+    // Duplicate check
+    const existing = applications.find(a =>
+      a.opportunityId === oppId &&
+      ((a.candidateEmail && a.candidateEmail.toLowerCase() === email) || a.candidateId === userId)
+    );
+
+    if (existing) {
+      return res.status(409).json({
+        error: 'You already have an application in your tracker for this opportunity',
+        existingApplication: existing
+      });
+    }
+
+    const candidate = candidates.find(c =>
+      (c.email && c.email.toLowerCase() === email) || c.id === userId
+    );
+    const candidateSkills = candidate ? extractCandidateSkillSet(candidate) : [];
+    const match = calculateOpportunityMatch(candidateSkills, opp.requiredSkills);
+
+    const initialStatus = VALID_APP_STATUSES.includes(status) ? status : 'Applied';
+
+    const newApp = {
+      id: applicationId++,
+      opportunityId: oppId,
+      candidateId: userId,
+      candidateEmail: email,
+      candidateName: req.user?.name || candidate?.name || 'Student',
+      status: initialStatus,
+      notes: String(notes || '').trim(),
+      matchScore: match.matchPercentage,
+      matchedSkills: match.matchedSkills,
+      missingSkills: match.missingSkills,
+      pipelineStage: candidate?.stage || 'quiz',
+      appliedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      history: [
+        {
+          status: initialStatus,
+          changedAt: new Date().toISOString(),
+          note: `Added as ${initialStatus}`
+        }
+      ]
+    };
+
+    applications.unshift(newApp);
+    await saveApplications();
+
+    return res.status(201).json({
+      success: true,
+      application: {
+        ...newApp,
+        opportunity: opp
+      },
+      message: `Opportunity added to ${initialStatus}`
+    });
+  } catch (error) {
+    console.error('Create application error:', error);
+    return res.status(500).json({ error: 'Failed to create application' });
+  }
+});
+
+// PATCH /api/applications/:id/status — update application status (Kanban move / drag-and-drop)
+app.patch('/api/applications/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status, notes } = req.body;
+
+    if (!status || !VALID_APP_STATUSES.includes(status)) {
+      return res.status(400).json({
+        error: `Status must be one of: ${VALID_APP_STATUSES.join(', ')}`
+      });
+    }
+
+    const appItem = applications.find(a => a.id === id);
+    if (!appItem) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    const email = (req.user?.email || '').toLowerCase();
+    const userId = req.user?.userId || req.user?.id;
+    const isOwner = (appItem.candidateEmail && appItem.candidateEmail.toLowerCase() === email) || appItem.candidateId === userId;
+    const isSuperAdmin = req.user?.userType === 'superadmin';
+    const isRecruiter = req.user?.userType === 'recruiter';
+
+    if (!isOwner && !isSuperAdmin && !isRecruiter) {
+      return res.status(403).json({ error: 'Not authorized to update this application' });
+    }
+
+    appItem.status = status;
+    appItem.updatedAt = new Date().toISOString();
+    if (!Array.isArray(appItem.history)) {
+      appItem.history = [];
+    }
+    appItem.history.push({
+      status,
+      changedAt: new Date().toISOString(),
+      changedBy: req.user?.email || 'User',
+      note: notes || `Moved to ${status}`
+    });
+
+    await saveApplications();
+
+    const opp = opportunities.find(o => o.id === appItem.opportunityId);
+
+    return res.json({
+      success: true,
+      application: {
+        ...appItem,
+        opportunity: opp
+      },
+      message: `Status updated to ${status}`
+    });
+  } catch (error) {
+    console.error('Update application status error:', error);
+    return res.status(500).json({ error: 'Failed to update application status' });
+  }
+});
+
+// DELETE /api/applications/:id — withdraw / delete application
+app.delete('/api/applications/:id', authenticateToken, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const appItem = applications.find(a => a.id === id);
+    if (!appItem) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    const email = (req.user?.email || '').toLowerCase();
+    const userId = req.user?.userId || req.user?.id;
+    const isOwner = (appItem.candidateEmail && appItem.candidateEmail.toLowerCase() === email) || appItem.candidateId === userId;
+    const isSuperAdmin = req.user?.userType === 'superadmin';
+
+    if (!isOwner && !isSuperAdmin) {
+      return res.status(403).json({ error: 'Not authorized to delete this application' });
+    }
+
+    applications = applications.filter(a => a.id !== id);
+    await saveApplications();
+
+    return res.json({
+      success: true,
+      message: 'Application withdrawn successfully'
+    });
+  } catch (error) {
+    console.error('Delete application error:', error);
+    return res.status(500).json({ error: 'Failed to delete application' });
+  }
+});
+
+// ==================== TPO / INSTITUTION ANALYTICS ====================
+
+let cachedTPOAnalytics = null;
+let lastTPOAnalyticsFetch = 0;
+
+app.get('/api/tpo/analytics', authenticateToken, requireSuperAdmin, (req, res) => {
+  try {
+    const now = Date.now();
+    if (cachedTPOAnalytics && (now - lastTPOAnalyticsFetch < 60000)) {
+      return res.json({
+        success: true,
+        cached: true,
+        data: cachedTPOAnalytics
+      });
+    }
+
+    // 1. Batch Readiness Aggregations
+    const totalStudents = candidates.length;
+    const assessedStudents = candidates.filter(c =>
+      (c.totalScore && c.totalScore > 0) ||
+      (c.technicalScore && c.technicalScore > 0) ||
+      (c.textInterviewScore && c.textInterviewScore > 0)
+    );
+
+    const scores = assessedStudents.map(c => c.totalScore || c.technicalScore || 0);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+    const readyCount = assessedStudents.filter(c => (c.totalScore || 0) >= 75).length;
+    const developingCount = assessedStudents.filter(c => {
+      const s = c.totalScore || 0;
+      return s >= 50 && s < 75;
+    }).length;
+    const needsTrainingCount = assessedStudents.filter(c => (c.totalScore || 0) < 50).length;
+
+    // 2. Placement Funnel Aggregations
+    const funnel = {
+      Wishlist: 0,
+      Applied: 0,
+      'In-Assessment': 0,
+      Interview: 0,
+      Offer: 0,
+      Rejected: 0
+    };
+
+    applications.forEach(a => {
+      if (funnel[a.status] !== undefined) {
+        funnel[a.status]++;
+      } else {
+        funnel.Applied++;
+      }
+    });
+
+    const totalApplications = applications.length;
+    const conversionRate = totalApplications > 0 ? Math.round((funnel.Offer / totalApplications) * 100) : 0;
+
+    // 3. Cohort Skill-Gap Heatmap
+    // Count missing skills frequency and student mastered skills
+    const missingSkillCounts = {};
+    const masteredSkillCounts = {};
+
+    candidates.forEach(c => {
+      const candSkills = extractCandidateSkillSet(c);
+      candSkills.forEach(skill => {
+        masteredSkillCounts[skill] = (masteredSkillCounts[skill] || 0) + 1;
+      });
+
+      // From upgrade skills plan
+      if (Array.isArray(c.upgradeSkillsPlan)) {
+        c.upgradeSkillsPlan.forEach(p => {
+          if (p.skill) {
+            missingSkillCounts[p.skill] = (missingSkillCounts[p.skill] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // Also factor in missing skills from opportunity requirements vs candidate skills
+    opportunities.forEach(opp => {
+      opp.requiredSkills.forEach(reqSkill => {
+        const hasSkillCount = candidates.filter(c =>
+          extractCandidateSkillSet(c).some(s => s.toLowerCase() === reqSkill.toLowerCase())
+        ).length;
+        const missingCount = Math.max(0, candidates.length - hasSkillCount);
+        if (missingCount > 0) {
+          missingSkillCounts[reqSkill] = (missingSkillCounts[reqSkill] || 0) + missingCount;
+        }
+      });
+    });
+
+    // Top missing skills sorted descending
+    const topMissingSkills = Object.entries(missingSkillCounts)
+      .map(([skill, count]) => ({ skill, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const topMasteredSkills = Object.entries(masteredSkillCounts)
+      .map(([skill, count]) => ({ skill, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const analyticsData = {
+      timestamp: new Date().toISOString(),
+      batchReadiness: {
+        totalStudents,
+        assessedStudentsCount: assessedStudents.length,
+        assessmentRate: totalStudents > 0 ? Math.round((assessedStudents.length / totalStudents) * 100) : 0,
+        averageReadinessScore: avgScore,
+        industryReadyCount: readyCount,
+        developingCount,
+        needsTrainingCount
+      },
+      placementFunnel: {
+        totalApplications,
+        stages: funnel,
+        offerConversionRate: conversionRate
+      },
+      skillGapHeatmap: {
+        topMissingSkills,
+        topMasteredSkills,
+        totalOpportunitiesTracked: opportunities.length
+      }
+    };
+
+    cachedTPOAnalytics = analyticsData;
+    lastTPOAnalyticsFetch = now;
+
+    return res.json({
+      success: true,
+      data: analyticsData
+    });
+  } catch (error) {
+    console.error('TPO Analytics error:', error);
+    return res.status(500).json({ error: 'Failed to generate TPO analytics' });
   }
 });
 
@@ -5165,10 +6054,10 @@ async function startServer() {
   });
 }
 
-if (!process.env.VERCEL) {
+if (require.main === module && !process.env.VERCEL) {
   startServer().catch(console.error);
 } else {
-  // Warm initialization for serverless; request middleware also guarantees readiness.
+  // Warm initialization for serverless or when imported as a module
   ensureDataInitialized().catch(console.error);
 }
 

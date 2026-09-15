@@ -84,6 +84,15 @@ const adminRateLimiter = rateLimit({
   handler: makeRateLimitHandler(15 * 60 * 1000),
 });
 
+// Opportunity browse / search routes: 60 / min
+const opportunityLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: makeRateLimitHandler(60 * 1000),
+});
+
 // ---------------------------------------------------------------------------
 // Helmet (HTTP security headers)
 // ---------------------------------------------------------------------------
@@ -136,5 +145,6 @@ module.exports = {
   authRateLimiter,
   aiRateLimiter,
   adminRateLimiter,
+  opportunityLimiter,
   sanitizeMiddleware,
 };
