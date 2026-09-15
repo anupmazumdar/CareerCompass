@@ -12,6 +12,7 @@ const {
   adminRateLimiter,
   sanitizeMiddleware
 } = require('./core/security/security');
+const cookieParser = require('cookie-parser');
 const { logger, morganMiddleware } = require('./core/logging/logger');
 const { notFoundHandler, globalErrorHandler } = require('./core/exceptions/errorHandler');
 
@@ -33,6 +34,7 @@ const app = express();
 // 1. Security & Core Middleware
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
+app.use(cookieParser());
 app.use((req, res, next) => {
   res.setHeader('X-API-Version', '2.0-unified');
   next();

@@ -9,7 +9,7 @@ const tokenBlacklist = new Set();
 const refreshTokenStore = new Map();
 
 function hashPassword(password) {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, 12);
 }
 
 function verifyPassword(password, hash) {
@@ -32,7 +32,7 @@ function issueAccessToken(payload) {
   );
 }
 
-function issueRefreshToken(payload) {
+function issueRefreshToken(payload, res = null) {
   const token = crypto.randomBytes(64).toString('hex');
   refreshTokenStore.set(token, {
     userId: payload.userId || payload.id,
@@ -40,6 +40,16 @@ function issueRefreshToken(payload) {
     role: payload.role || payload.userType,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
   });
+
+  if (res && typeof res.cookie === 'function') {
+    res.cookie('refreshToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+  }
+
   return token;
 }
 
@@ -85,9 +95,9 @@ function authenticateToken(req, res, next) {
 }
 
 function handleRefreshToken(req, res) {
-  const { refreshToken } = req.body || {};
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
   if (!refreshToken) {
-    return res.status(400).json({ success: false, error: 'MISSING_TOKEN', message: 'refreshToken is required' });
+    return res.status(400).json({ success: false, error: 'MISSING_TOKEN', message: 'refreshToken is required via cookie or body' });
   }
 
   const stored = refreshTokenStore.get(refreshToken);
@@ -106,7 +116,7 @@ function handleRefreshToken(req, res) {
 }
 
 function handleLogout(req, res) {
-  const { refreshToken } = req.body || {};
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
   const authHeader = req.headers['authorization'];
   const rawToken = authHeader && authHeader.split(' ')[1];
 
@@ -121,6 +131,14 @@ function handleLogout(req, res) {
 
   if (refreshToken) {
     refreshTokenStore.delete(refreshToken);
+  }
+
+  if (res && typeof res.clearCookie === 'function') {
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
   }
 
   return res.json({ success: true, message: 'Logged out successfully' });

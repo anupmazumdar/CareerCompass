@@ -159,24 +159,86 @@ class StudentRepository {
     return db.run('DELETE FROM student_skills WHERE student_id = ? AND skill_id = ?', [studentId, skillId]);
   }
 
+  // Certifications
+  async getCertifications(studentId) {
+    return db.all('SELECT * FROM student_certifications WHERE student_id = ? ORDER BY issue_date DESC', [studentId]);
+  }
+
+  async addCertification(studentId, cert) {
+    return db.run(
+      `INSERT INTO student_certifications (student_id, title, issuing_organization, issue_date, expiration_date, credential_id, credential_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        studentId,
+        cert.title,
+        cert.issuing_organization,
+        cert.issue_date,
+        cert.expiration_date || null,
+        cert.credential_id || null,
+        cert.credential_url || null
+      ]
+    );
+  }
+
+  async deleteCertification(studentId, certId) {
+    return db.run('DELETE FROM student_certifications WHERE id = ? AND student_id = ?', [certId, studentId]);
+  }
+
+  calculateProfileCompleteness(profile) {
+    let score = 0;
+    // 1. Personal & Contact Info (20%)
+    if (profile.full_name) score += 5;
+    if (profile.headline) score += 5;
+    if (profile.bio) score += 5;
+    if (profile.location) score += 5;
+
+    // 2. Education History (20%)
+    if (profile.education && profile.education.length > 0) score += 20;
+
+    // 3. Skills Matrix (20%)
+    if (profile.skills && profile.skills.length >= 3) {
+      score += 20;
+    } else if (profile.skills && profile.skills.length > 0) {
+      score += profile.skills.length * 6;
+    }
+
+    // 4. Projects Showcase (20%)
+    if (profile.projects && profile.projects.length > 0) score += 20;
+
+    // 5. Credentials & Links (20%)
+    let extra = 0;
+    if (profile.certifications && profile.certifications.length > 0) extra += 8;
+    if (profile.github_url || profile.linkedin_url || profile.portfolio_url) extra += 6;
+    if (profile.preferred_role) extra += 6;
+    score += Math.min(extra, 20);
+
+    return Math.min(Math.round(score), 100);
+  }
+
   async getFullProfile(studentId) {
     const profile = await this.findById(studentId);
     if (!profile) return null;
 
-    const [education, experience, projects, skills] = await Promise.all([
+    const [education, experience, projects, skills, certifications] = await Promise.all([
       this.getEducation(studentId),
       this.getExperience(studentId),
       this.getProjects(studentId),
-      this.getSkills(studentId)
+      this.getSkills(studentId),
+      this.getCertifications(studentId)
     ]);
 
-    return {
+    const assembled = {
       ...profile,
       education,
       experience,
       projects,
-      skills
+      skills,
+      certifications
     };
+
+    assembled.profile_completeness = this.calculateProfileCompleteness(assembled);
+
+    return assembled;
   }
 }
 

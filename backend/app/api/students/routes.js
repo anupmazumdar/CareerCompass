@@ -5,6 +5,14 @@ const router = express.Router();
 const studentRepo = require('../../repositories/studentRepository');
 const { authenticateToken } = require('../../core/authentication/auth');
 const { requireRole, verifyCandidateAccess } = require('../../core/authorization/rbac');
+const { validate } = require('../../middleware/validate');
+const {
+  personalProfileSchema,
+  educationSchema,
+  projectSchema,
+  certificationSchema,
+  skillSchema
+} = require('../../schemas/studentSchemas');
 
 // Helper to get authenticated student's profile ID
 async function getStudentProfileId(userId) {
@@ -27,30 +35,27 @@ router.get('/me', authenticateToken, requireRole('student'), async (req, res, ne
 });
 
 // PUT /api/students/me
-router.put('/me', authenticateToken, requireRole('student'), async (req, res, next) => {
+router.put('/me', authenticateToken, requireRole('student'), validate(personalProfileSchema), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     if (!studentId) {
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Student profile not found' });
     }
-    const updated = await studentRepo.updateProfile(studentId, req.body);
-    return res.json({ success: true, data: updated, message: 'Profile updated successfully' });
+    await studentRepo.updateProfile(studentId, req.body);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Profile updated successfully' });
   } catch (err) {
     next(err);
   }
 });
 
 // POST /api/students/me/education
-router.post('/me/education', authenticateToken, requireRole('student'), async (req, res, next) => {
+router.post('/me/education', authenticateToken, requireRole('student'), validate(educationSchema), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
-    const { institution, degree, field_of_study, start_year, end_year, grade_or_cgpa } = req.body || {};
-    if (!institution || !degree) {
-      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Institution and degree are required' });
-    }
-    await studentRepo.addEducation(studentId, { institution, degree, field_of_study, start_year, end_year, grade_or_cgpa });
-    const education = await studentRepo.getEducation(studentId);
-    return res.status(201).json({ success: true, data: education, message: 'Education added successfully' });
+    await studentRepo.addEducation(studentId, req.body);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: fullProfile, message: 'Education added successfully' });
   } catch (err) {
     next(err);
   }
@@ -61,7 +66,8 @@ router.delete('/me/education/:id', authenticateToken, requireRole('student'), as
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     await studentRepo.deleteEducation(studentId, req.params.id);
-    return res.json({ success: true, message: 'Education removed successfully' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Education removed successfully' });
   } catch (err) {
     next(err);
   }
@@ -76,8 +82,8 @@ router.post('/me/experience', authenticateToken, requireRole('student'), async (
       return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Company name and role title are required' });
     }
     await studentRepo.addExperience(studentId, { company_name, role_title, location, start_date, end_date, is_current, description });
-    const experience = await studentRepo.getExperience(studentId);
-    return res.status(201).json({ success: true, data: experience, message: 'Experience added successfully' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: fullProfile, message: 'Experience added successfully' });
   } catch (err) {
     next(err);
   }
@@ -88,23 +94,20 @@ router.delete('/me/experience/:id', authenticateToken, requireRole('student'), a
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     await studentRepo.deleteExperience(studentId, req.params.id);
-    return res.json({ success: true, message: 'Experience removed successfully' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Experience removed successfully' });
   } catch (err) {
     next(err);
   }
 });
 
 // POST /api/students/me/projects
-router.post('/me/projects', authenticateToken, requireRole('student'), async (req, res, next) => {
+router.post('/me/projects', authenticateToken, requireRole('student'), validate(projectSchema), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
-    const { title, description, technologies, project_url, github_url } = req.body || {};
-    if (!title) {
-      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Project title is required' });
-    }
-    await studentRepo.addProject(studentId, { title, description, technologies, project_url, github_url });
-    const projects = await studentRepo.getProjects(studentId);
-    return res.status(201).json({ success: true, data: projects, message: 'Project added successfully' });
+    await studentRepo.addProject(studentId, req.body);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: fullProfile, message: 'Project added successfully' });
   } catch (err) {
     next(err);
   }
@@ -115,23 +118,45 @@ router.delete('/me/projects/:id', authenticateToken, requireRole('student'), asy
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     await studentRepo.deleteProject(studentId, req.params.id);
-    return res.json({ success: true, message: 'Project removed successfully' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Project removed successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/students/me/certifications
+router.post('/me/certifications', authenticateToken, requireRole('student'), validate(certificationSchema), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    await studentRepo.addCertification(studentId, req.body);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: fullProfile, message: 'Certification added successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/students/me/certifications/:id
+router.delete('/me/certifications/:id', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    await studentRepo.deleteCertification(studentId, req.params.id);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Certification removed successfully' });
   } catch (err) {
     next(err);
   }
 });
 
 // POST /api/students/me/skills
-router.post('/me/skills', authenticateToken, requireRole('student'), async (req, res, next) => {
+router.post('/me/skills', authenticateToken, requireRole('student'), validate(skillSchema), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
-    const { skillId, proficiencyLevel } = req.body || {};
-    if (!skillId) {
-      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'skillId is required' });
-    }
+    const { skillId, proficiencyLevel } = req.body;
     await studentRepo.addSkill(studentId, skillId, proficiencyLevel || 'intermediate', 'manual');
-    const skills = await studentRepo.getSkills(studentId);
-    return res.status(201).json({ success: true, data: skills, message: 'Skill added to profile' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: fullProfile, message: 'Skill added to profile' });
   } catch (err) {
     next(err);
   }
@@ -142,7 +167,8 @@ router.delete('/me/skills/:id', authenticateToken, requireRole('student'), async
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     await studentRepo.removeSkill(studentId, req.params.id);
-    return res.json({ success: true, message: 'Skill removed from profile' });
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile, message: 'Skill removed from profile' });
   } catch (err) {
     next(err);
   }

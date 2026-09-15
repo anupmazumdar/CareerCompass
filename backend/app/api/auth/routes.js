@@ -76,7 +76,7 @@ router.post('/register', async (req, res, next) => {
       recruiterProfileId,
       companyId
     });
-    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role });
+    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
 
     return res.status(201).json({
       success: true,
@@ -135,7 +135,7 @@ router.post('/login', async (req, res, next) => {
       recruiterProfileId,
       companyId
     });
-    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role });
+    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
 
     return res.json({
       success: true,
