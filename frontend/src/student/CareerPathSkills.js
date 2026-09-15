@@ -271,9 +271,10 @@ export function CareerPathSkills() {
             Select Your Target MCA Career Role
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {roles.map(r => {
+            {roles.map((r, idx) => {
               const Icon = ROLE_ICONS[r.id] || Compass;
               const isSelected = selectedRole === r.id;
+              const isLastOdd = idx === roles.length - 1 && roles.length % 2 === 1;
 
               return (
                 <button
@@ -281,6 +282,8 @@ export function CareerPathSkills() {
                   type="button"
                   onClick={() => setSelectedRole(r.id)}
                   className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between space-y-3 ${
+                    isLastOdd ? 'col-span-2 sm:col-span-1 ' : ''
+                  }${
                     isSelected
                       ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/20 shadow-xs'
                       : 'bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50'

@@ -186,7 +186,7 @@ export function CareerPathOpportunities() {
             </div>
 
             {/* Min Match Filter (For Students) */}
-            <div className="md:col-span-3 flex items-center justify-end gap-2">
+            <div className="md:col-span-3 flex items-center justify-start md:justify-end gap-2">
               <label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                 <SlidersHorizontal size={13} />
                 Min Match:

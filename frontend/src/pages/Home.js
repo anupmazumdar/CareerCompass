@@ -490,7 +490,7 @@ function Home({
                   >
                     <span className="currency-pill__flag">{c.flag}</span>
                     <span className="currency-pill__code">{c.code}</span>
-                    <span className="currency-pill__symbol">({c.symbol})</span>
+                    <span className="currency-pill__symbol">{c.symbol}</span>
                   </button>
                 ))}
               </div>

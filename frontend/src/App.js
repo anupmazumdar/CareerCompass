@@ -957,15 +957,15 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
           <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">Choose Your Plan</h2>
           <p className="text-sm md:text-base text-slate-300 mb-3">Select the perfect plan for your recruitment needs</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+          <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 mb-4 max-w-lg mx-auto">
             {Object.values(CURRENCIES).map((c) => (
               <button
                 key={c.code}
                 type="button"
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1.5 ${
                   currency === c.code
                     ? 'bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-900/40'
-                    : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white'
+                    : 'bg-slate-800/40 border-transparent text-slate-300 hover:border-slate-600 hover:text-white'
                 }`}
                 onClick={() => {
                   if (setCurrency) setCurrency(c.code);
@@ -974,7 +974,9 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
                   } catch (_) {}
                 }}
               >
-                {c.flag} {c.code} ({c.symbol})
+                <span>{c.flag}</span>
+                <span className="font-bold">{c.code}</span>
+                <span className="text-[11px] opacity-80">{c.symbol}</span>
               </button>
             ))}
           </div>
