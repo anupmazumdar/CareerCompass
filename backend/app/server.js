@@ -27,6 +27,7 @@ const skillRoutes = require('./api/skills/routes');
 const matchingRoutes = require('./api/matching/routes');
 const recommendationRoutes = require('./api/recommendations/routes');
 const resumeRoutes = require('./api/resumes/routes');
+const aiRoutes = require('./api/ai/routes');
 const adminRoutes = require('./api/admin/routes');
 
 const app = express();
@@ -74,6 +75,7 @@ app.use('/api/skills', skillRoutes);
 app.use('/api/matching', matchingRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/resumes', resumeRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 4. Legacy Route Aliases for Compatibility

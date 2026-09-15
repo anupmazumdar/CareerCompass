@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const skillRepo = require('../../repositories/skillRepository');
+const studentRepo = require('../../repositories/studentRepository');
 const { authenticateToken } = require('../../core/authentication/auth');
 const { requireRole } = require('../../core/authorization/rbac');
 
@@ -26,6 +27,59 @@ router.get('/categories', async (req, res, next) => {
   try {
     const categories = await skillRepo.getCategories();
     return res.json({ success: true, data: categories });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/skills/roles (Supported MCA student target roles and benchmarks)
+router.get('/roles', async (req, res, next) => {
+  try {
+    const roles = skillRepo.getTargetRoles();
+    return res.json({ success: true, count: roles.length, data: roles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/skills/resources (Curated free learning resources)
+router.get('/resources', async (req, res, next) => {
+  try {
+    const { role, gapArea, skill } = req.query || {};
+    const resources = await skillRepo.getLearningResources({
+      role: role || null,
+      gapArea: gapArea || skill || null
+    });
+    return res.json({ success: true, count: resources.length, data: resources });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/skills/gap-analysis (Target role gap analysis for logged-in student)
+router.get('/gap-analysis', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const student = await studentRepo.findByUserId(req.user.userId);
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Student profile not found' });
+    }
+
+    const studentSkills = await studentRepo.getSkills(student.id);
+    const targetRoleKey = req.query.role || student.preferred_role || 'fullstack';
+
+    const analysis = await skillRepo.computeGapAnalysis({
+      studentSkills,
+      targetRoleKey
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        studentId: student.id,
+        preferredRole: student.preferred_role,
+        ...analysis
+      }
+    });
   } catch (err) {
     next(err);
   }

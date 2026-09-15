@@ -18,7 +18,9 @@ const {
 // POST /api/auth/register
 router.post('/register', async (req, res, next) => {
   try {
-    const { email, password, role, fullName, phone, companyName } = req.body || {};
+    const { email, password, role, fullName, full_name, phone, companyName, company_name } = req.body || {};
+    const resolvedFullName = fullName || full_name || email.split('@')[0];
+    const resolvedCompanyName = companyName || company_name || null;
 
     if (!email || !password || !role) {
       return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Email, password, and role are required' });
@@ -43,7 +45,7 @@ router.post('/register', async (req, res, next) => {
       email,
       passwordHash,
       role: normalizedRole,
-      fullName: fullName || email.split('@')[0],
+      fullName: resolvedFullName,
       phone: phone || null,
       status: 'active'
     });
@@ -57,10 +59,10 @@ router.post('/register', async (req, res, next) => {
       studentProfileId = sp?.id;
     } else if (normalizedRole === 'recruiter') {
       let comp = null;
-      if (companyName) {
-        comp = await recruiterRepo.findCompanyByName(companyName);
+      if (resolvedCompanyName) {
+        comp = await recruiterRepo.findCompanyByName(resolvedCompanyName);
         if (!comp) {
-          comp = await recruiterRepo.createCompany({ name: companyName, verificationStatus: 'verified' });
+          comp = await recruiterRepo.createCompany({ name: resolvedCompanyName, verificationStatus: 'verified' });
         }
       }
       companyId = comp?.id || null;

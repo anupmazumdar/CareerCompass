@@ -149,8 +149,8 @@ router.delete('/me/certifications/:id', authenticateToken, requireRole('student'
   }
 });
 
-// POST /api/students/me/skills
-router.post('/me/skills', authenticateToken, requireRole('student'), validate(skillSchema), async (req, res, next) => {
+// POST /api/students/me/skills and POST /api/students/skills
+router.post(['/me/skills', '/skills'], authenticateToken, requireRole('student'), validate(skillSchema), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     const { skillId, proficiencyLevel } = req.body;
@@ -162,8 +162,8 @@ router.post('/me/skills', authenticateToken, requireRole('student'), validate(sk
   }
 });
 
-// DELETE /api/students/me/skills/:id
-router.delete('/me/skills/:id', authenticateToken, requireRole('student'), async (req, res, next) => {
+// DELETE /api/students/me/skills/:id and DELETE /api/students/skills/:id
+router.delete(['/me/skills/:id', '/skills/:id'], authenticateToken, requireRole('student'), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
     await studentRepo.removeSkill(studentId, req.params.id);

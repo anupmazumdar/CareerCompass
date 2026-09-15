@@ -7,7 +7,8 @@ import {
   Sparkles,
   User,
   LogOut,
-  GraduationCap
+  GraduationCap,
+  TrendingUp
 } from 'lucide-react';
 import { api } from '../api/client';
 import { AUTH_STORAGE_KEY } from '../config';
@@ -42,6 +43,7 @@ export function CareerPathNav() {
   };
 
   const navLinks = [
+    { label: 'Dashboard', path: '/dashboard', icon: TrendingUp },
     { label: 'Opportunities', path: '/opportunities', icon: Compass },
     { label: 'Applications', path: '/applications', icon: Layers },
     { label: 'Skills & Gaps', path: '/skills', icon: Briefcase },
