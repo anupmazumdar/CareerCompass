@@ -215,15 +215,27 @@ CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
     job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
-    student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
     resume_id INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'Applied' CHECK (status IN ('Wishlist', 'Applied', 'In-Assessment', 'Interview', 'Offer', 'Rejected', 'applied', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected')),
+    status TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('saved', 'applied', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected', 'withdrawn')),
     match_score REAL DEFAULT 0,
     cover_note TEXT,
     notes TEXT,
     pipeline_stage TEXT DEFAULT 'profile',
     applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     applied_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(job_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS application_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    note_type TEXT DEFAULT 'general' CHECK (note_type IN ('general', 'interview_prep', 'follow_up', 'offer_details')),
+    content TEXT NOT NULL,
+    reminder_date DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
