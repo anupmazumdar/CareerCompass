@@ -22,10 +22,7 @@ class JobRepository {
   }
 
   async findAllPublished(filters = {}) {
-    let sql = `
-      SELECT j.id, j.title, j.department, j.location, j.employment_type, j.experience_level,
-             j.min_experience_years, j.min_education, j.min_salary, j.max_salary, j.deadline,
-             j.created_at, c.id as company_id, c.name as company_name, c.logo_url as company_logo
+    let baseSql = `
       FROM jobs j
       JOIN companies c ON j.company_id = c.id
       WHERE j.status = 'published' AND j.deleted_at IS NULL
@@ -33,29 +30,60 @@ class JobRepository {
     const params = [];
 
     if (filters.location) {
-      sql += ' AND j.location LIKE ?';
+      baseSql += ' AND j.location LIKE ?';
       params.push(`%${filters.location}%`);
     }
 
-    if (filters.employmentType) {
-      sql += ' AND j.employment_type = ?';
-      params.push(filters.employmentType);
+    if (filters.employmentType || filters.type) {
+      baseSql += ' AND j.employment_type = ?';
+      params.push(filters.employmentType || filters.type);
+    }
+
+    if (filters.workType) {
+      baseSql += ' AND j.location LIKE ?';
+      params.push(`%${filters.workType}%`);
     }
 
     if (filters.search) {
-      sql += ' AND (j.title LIKE ? OR j.description LIKE ? OR c.name LIKE ?)';
+      baseSql += ' AND (j.title LIKE ? OR j.description LIKE ? OR c.name LIKE ?)';
       params.push(`%${filters.search}%`, `%${filters.search}%`, `%${filters.search}%`);
     }
 
-    sql += ' ORDER BY j.created_at DESC';
+    if (filters.skill) {
+      baseSql += ` AND j.id IN (
+        SELECT js.job_id FROM job_skills js
+        JOIN skills s ON js.skill_id = s.id
+        WHERE LOWER(s.canonical_name) = ?
+      )`;
+      params.push(String(filters.skill).toLowerCase().trim());
+    }
 
-    const jobs = await db.all(sql, params);
+    // Count total
+    const countRow = await db.get(`SELECT COUNT(*) as total ${baseSql}`, params);
+    const total = countRow ? countRow.total : 0;
+
+    let sql = `
+      SELECT j.id, j.title, j.description, j.department, j.location, j.employment_type, j.experience_level,
+             j.min_experience_years, j.min_education, j.min_salary, j.max_salary, j.deadline,
+             j.created_at, c.id as company_id, c.name as company_name, c.logo_url as company_logo
+      ${baseSql}
+      ORDER BY j.created_at DESC
+    `;
+
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 50;
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const offset = (page - 1) * limit;
+
+    sql += ' LIMIT ? OFFSET ?';
+    const queryParams = [...params, limit, offset];
+
+    const jobs = await db.all(sql, queryParams);
     // Attach skills
     for (const job of jobs) {
       job.skills = await this.getJobSkills(job.id);
     }
 
-    return jobs;
+    return { jobs, total, page, limit };
   }
 
   async findByRecruiter(recruiterProfileId) {

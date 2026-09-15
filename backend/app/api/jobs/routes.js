@@ -8,25 +8,140 @@ const appRepo = require('../../repositories/applicationRepository');
 const { authenticateToken } = require('../../core/authentication/auth');
 const { requireRole } = require('../../core/authorization/rbac');
 
-// GET /api/jobs (Public directory of active published jobs)
+const studentRepo = require('../../repositories/studentRepository');
+const matchingEngine = require('../../ai/matching_engine/matchingEngine');
+const jwt = require('jsonwebtoken');
+const config = require('../../core/config');
+
+// Helper to extract optional authenticated student
+async function getOptionalStudentProfile(req) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return null;
+
+  try {
+    const decoded = jwt.verify(token, config.jwt.accessSecret);
+    if (decoded && decoded.role === 'student') {
+      const studentProfile = await studentRepo.findByUserId(decoded.userId);
+      if (studentProfile) {
+        return await studentRepo.getFullProfile(studentProfile.id);
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+// GET /api/jobs (or /api/opportunities) - Directory with search, filters, pagination & student matching
 router.get('/', async (req, res, next) => {
   try {
-    const { location, employmentType, search } = req.query || {};
-    const jobs = await jobRepo.findAllPublished({ location, employmentType, search });
-    return res.json({ success: true, count: jobs.length, data: jobs });
+    const {
+      search,
+      q,
+      location,
+      employmentType,
+      type,
+      workType,
+      skill,
+      minMatch,
+      page = 1,
+      limit = 12
+    } = req.query || {};
+
+    const studentProfile = await getOptionalStudentProfile(req);
+
+    const result = await jobRepo.findAllPublished({
+      search: search || q,
+      location,
+      employmentType: employmentType || type,
+      workType,
+      skill,
+      page: Number(page),
+      limit: Number(limit)
+    });
+
+    let jobs = result.jobs || [];
+
+    // If student is authenticated, compute real-time match score for each opportunity
+    if (studentProfile) {
+      const scoredJobs = await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const match = await matchingEngine.computeMatch(studentProfile, job);
+            return {
+              ...job,
+              match_score: match.final_score,
+              match_grade: match.grade,
+              matched_skills: (match.matched_skills || []).map(m => m.skill),
+              missing_skills: (match.missing_skills || []).map(m => m.skill),
+              match_explanation: match.explanation,
+              match_breakdown: match.breakdown
+            };
+          } catch (_) {
+            return {
+              ...job,
+              match_score: 50,
+              match_grade: 'C',
+              matched_skills: [],
+              missing_skills: []
+            };
+          }
+        })
+      );
+
+      // Filter by minMatch if specified
+      if (minMatch !== undefined && !isNaN(Number(minMatch))) {
+        const threshold = Number(minMatch);
+        jobs = scoredJobs.filter(j => j.match_score >= threshold);
+      } else {
+        jobs = scoredJobs;
+      }
+
+      // Sort by match_score DESC by default for students
+      jobs.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+    }
+
+    const total = result.total !== undefined ? result.total : jobs.length;
+    const totalPages = Math.ceil(total / Number(limit)) || 1;
+
+    return res.json({
+      success: true,
+      count: jobs.length,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages,
+      hasStudentProfile: Boolean(studentProfile),
+      data: jobs
+    });
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/jobs/:id
+// GET /api/jobs/:id - Detailed opportunity with full match breakdown if student
 router.get('/:id', async (req, res, next) => {
   try {
     const job = await jobRepo.findById(req.params.id);
     if (!job) {
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Job not found' });
     }
-    return res.json({ success: true, data: job });
+
+    const studentProfile = await getOptionalStudentProfile(req);
+    let match = null;
+
+    if (studentProfile) {
+      try {
+        match = await matchingEngine.computeMatch(studentProfile, job);
+      } catch (_) {}
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        ...job,
+        match
+      }
+    });
   } catch (err) {
     next(err);
   }
