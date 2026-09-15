@@ -47,9 +47,11 @@ const globalRateLimiter = rateLimit({
   message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Global rate limit exceeded. Please try again later.' }
 });
 
+const isDevOrTest = process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: isDevOrTest ? 2000 : 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Too many authentication attempts. Please try again in 15 minutes.' }

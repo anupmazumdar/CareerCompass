@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:5000/api';
+const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3001/api';
 
 async function request(url, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
