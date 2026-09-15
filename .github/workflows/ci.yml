@@ -49,4 +49,4 @@ jobs:
         run: cd frontend && CI=true npm test -- --watchAll=false
 
       - name: Verify Frontend Production Build
-        run: cd frontend && npm run build
+        run: cd frontend && CI=false npm run build

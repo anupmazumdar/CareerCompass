@@ -52,10 +52,6 @@ function buildYouTubeThumbnailUrl(url) {
   return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
 }
 
-function buildYouTubeEmbedUrl(url) {
-  const videoId = extractYouTubeVideoId(url);
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
-}
 
 function formatFileSize(size) {
   const value = Number(size) || 0;
@@ -4931,7 +4927,7 @@ function ResultsStage({ candidateData, authState, setStage }) {
     } finally {
       setLoadingAdvice(false);
     }
-  }, [authState?.token, candidateData]);
+  }, [authState?.token, candidateData, preferredCompany]);
 
   useEffect(() => { fetchAdvice(); }, [fetchAdvice]);
 
