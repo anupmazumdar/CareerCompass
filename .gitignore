@@ -45,3 +45,13 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Database files
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Python virtual environment & analysis scratch
+.venv/
+graphify-out/

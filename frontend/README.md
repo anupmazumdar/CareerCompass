@@ -1,186 +1,83 @@
-# TalentAI Frontend Guide
+# TalentAI Frontend Web Application (`frontend/`)
 
-TalentAI is an AI-powered recruitment platform with candidate and recruiter workflows, resume analysis, quizzes, interviews, and video-based assessments.
+## Purpose
+The single-page web client for the **Unified TalentAI Career & Recruitment Platform**. Built with React 18, React Router v6, Tailwind CSS, and Lucide React. It provides unified, role-tailored user interfaces for Students, Recruiters, and Admins/TPOs.
 
-## Overview
+---
 
-This frontend app is built with React and talks to the TalentAI API server in the `api` folder.
-
-## Features
-
-- Candidate and recruiter authentication flows
-- Candidate journey: profile, career guidance, resume, quiz, interview, video, results
-- Recruiter dashboard and plan-based access
-- Support chatbot integration
-- Responsive UI built with Tailwind CSS
-
-## Tech Stack
-
-| Technology | Purpose |
-| --- | --- |
-| React 18 | Frontend framework |
-| Tailwind CSS | Styling and responsive layout |
-| Fetch API | Backend communication |
-| Lucide React | Icon set |
-
-## Prerequisites
-
-- Node.js v18 or later
-- npm v9 or later
-- Running TalentAI backend API
-
-## Local Setup
-
-1. Clone the repository and open the project root.
-2. Install frontend dependencies.
-3. Configure frontend environment variables.
-4. Start frontend development server.
-
-```bash
-cd frontend
-npm install
-```
-
-Create `frontend/.env`:
-
-```env
-REACT_APP_API_URL=http://localhost:3001
-```
-
-Optional variables:
-
-```env
-# Optional: for direct frontend experiments only
-REACT_APP_OPENROUTER_API_KEY=your_openrouter_key
-```
-
-Run frontend:
-
-```bash
-npm start
-```
-
-Frontend runs on [http://localhost:3000](http://localhost:3000).
-
-## Backend Dependency
-
-Frontend expects the backend API to be running from the repository `api` folder.
-
-From repository root:
-
-```bash
-cd api
-npm install
-npm start
-```
-
-Backend default: `http://localhost:3001`
-
-## Core User Flows
-
-### Candidate flow
-
-1. Register or sign in as candidate.
-2. Complete profile.
-3. Use career coach guidance.
-4. Upload resume and run analysis.
-5. Complete technical quiz.
-6. Complete interview stages (text and video).
-7. View final scoring and recommendations.
-
-### Recruiter flow
-
-1. Register or sign in as recruiter.
-2. Select and activate a subscription plan.
-3. Review candidate pipeline and scores.
-4. Monitor rankings and hiring insights.
-
-## Project Structure
+## Directory Organization
 
 ```text
 frontend/
- public/
- src/
-    components/
-    pages/
-    App.js
-    App.css
-    index.js
- package.json
- README.md
+├── public/                    # Static web assets, favicon, index.html
+├── src/
+│   ├── components/            # Shared UI primitives (Navbar, SupportChatbot, Modals, Buttons)
+│   ├── pages/                 # Public top-level pages (Home, Privacy, Terms, GlobeDemo)
+│   ├── layouts/               # Responsive layout wrappers (AppLayout)
+│   ├── hooks/                 # Custom React hooks (useAuth, useDebounce)
+│   ├── services/              # Frontend API call services & storage persistence
+│   ├── api/                   # Centralized Axios/fetch client with Bearer token interceptor
+│   ├── auth/                  # AuthContext, ProtectedRoute guards, session management
+│   ├── student/               # Student workspace (StudentDashboard, Profile, Education)
+│   ├── recruiter/             # Recruiter workspace (RecruiterDashboard, CandidateRanking)
+│   ├── admin/                 # TPO Admin workspace (AdminDashboard, Governance)
+│   ├── jobs/                  # Job board, search filters, and detail views
+│   ├── applications/          # Application tracker and status timeline
+│   ├── resume/                # ATS diagnostic, resume intelligence & feedback
+│   ├── matching/              # Match score badges and visual breakdown
+│   ├── skills/                # Skill badge lists and selector components
+│   ├── notifications/         # In-app notification center and alert banners
+│   ├── utils/                 # Formatting and UI helper utilities
+│   ├── types/                 # Shared frontend domain enums and constants
+│   ├── config/                # Environment and endpoint configurations
+│   ├── App.js                 # Universal declarative React Router v6 definitions
+│   ├── index.js               # Application bootstrap
+│   └── index.css              # Tailwind CSS and global styling tokens
+│
+├── tests/                     # Frontend testing suites
+│   ├── unit/                  # Component and utility unit tests
+│   ├── integration/           # Navigation and authentication flow tests
+│   └── e2e/                   # User journey simulations
+├── package.json
+└── README.md
 ```
 
-## Environment Notes
+---
 
-- Keep secrets in backend `.env` whenever possible.
-- Do not commit `.env` files.
-- Frontend should use `REACT_APP_API_URL` to target the backend.
+## What Belongs Here
+- All client-side UI components, views, pages, and interactive layouts.
+- Client-side routing, navigation guards, and role-based route protections.
+- Client state management (`AuthContext`, local storage sync).
+- Component unit, integration, and UI tests.
 
-## Auth0 React SDK Setup
+## What Does NOT Belong Here
+- Backend server logic, Express route controllers, and direct database queries (belongs in `backend/`).
+- Private API keys, JWT secret keys, or database credentials (belongs in `.env`).
+- Database migration DDL or seeds (belongs in `database/`).
 
-This project now includes the official Auth0 React SDK (`@auth0/auth0-react@2.x`) and wraps the app with `Auth0Provider` in [src/index.js](src/index.js).
+---
 
-Current auth flow:
+## Important Dependencies
+- `react`, `react-dom` (v18)
+- `react-router-dom` (v6)
+- `tailwindcss` & `postcss`
+- `lucide-react` (icons)
+- `@testing-library/react` and `@testing-library/jest-dom`
 
-- Auth0 login and signup use popup mode from the modal UI instead of full-page redirect mode.
-- After Auth0 login succeeds, the frontend exchanges the Auth0 access token with `POST /api/auth/auth0/session` to create the TalentAI API session.
-- The backend resolves Auth0 identity through the Auth0 `/userinfo` endpoint, which is more reliable on Vercel serverless than on-demand JWKS verification.
+---
 
-Configured Auth0 app:
+## How to Work With This Folder
 
-- Domain: `dev-shjk32vx4oscfrde.us.auth0.com`
-- Client ID: `KHC4ncaBYv0W4NqgVSLD5vJI8SuqPHDk`
-- Redirect URI / origin: `https://anupmazumdar-ai-recruitment-agent.vercel.app/`
-- Logout return URI: `https://anupmazumdar-ai-recruitment-agent.vercel.app/`
+```bash
+# 1. Install dependencies
+npm install
 
-Required frontend env vars:
+# 2. Start local development server (http://localhost:3000)
+npm start
 
-```env
-REACT_APP_AUTH0_DOMAIN=dev-shjk32vx4oscfrde.us.auth0.com
-REACT_APP_AUTH0_CLIENT_ID=KHC4ncaBYv0W4NqgVSLD5vJI8SuqPHDk
-REACT_APP_AUTH0_REDIRECT_URI=https://anupmazumdar-ai-recruitment-agent.vercel.app/
-REACT_APP_AUTH0_LOGOUT_RETURN_TO=https://anupmazumdar-ai-recruitment-agent.vercel.app/
+# 3. Run automated tests non-interactively
+npm test -- --watchAll=false
+
+# 4. Build production static bundle
+npm run build
 ```
-
-Important: your Auth0 application is currently configured only for the Vercel origin above. Running this app on a different origin (for example `http://localhost:3000`) will cause Auth0 callback/logout/web-origin mismatch errors unless you add that origin in the Auth0 application settings.
-
-For popup mode to work, make sure the Auth0 application includes the deployment domain in `Allowed Web Origins`.
-
-Auth0 handoff behavior in this app:
-
-- First-time Auth0 users must explicitly choose Candidate or Recruiter before creating a TalentAI API session.
-- Recruiter onboarding through Auth0 also requires a company name, and backend approval depends on server-side `AUTH0_ALLOWED_RECRUITER_DOMAINS` configuration.
-
-## Theme Toggle
-
-- The app now includes a top-right Light Mode / Dark Mode toggle in the global shell.
-- The selected theme persists in the browser via `localStorage` using the key `talentai_theme`.
-
-## Troubleshooting
-
-### Frontend does not start
-
-- Ensure dependencies are installed with `npm install`.
-- Ensure port 3000 is available.
-- Check terminal output for missing package errors.
-
-### API calls fail in frontend
-
-- Verify backend is running on the configured URL.
-- Verify `REACT_APP_API_URL` value in `frontend/.env`.
-- Restart frontend after `.env` changes.
-
-### CORS or auth issues
-
-- Confirm backend CORS is enabled.
-- Re-login if token/session is stale.
-
-## Security Guidance
-
-- Never hardcode API keys.
-- Keep authentication logic server-side.
-- Use HTTPS in production.
-
-## License
-
-This project is licensed under the MIT License. See [README.md](../README.md) for full project details.

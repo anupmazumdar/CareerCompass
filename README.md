@@ -1,484 +1,260 @@
-# TalentAI - AI-Powered Recruitment Platform
+# Unified TalentAI Career & Recruitment Platform
 
-![TalentAI Banner](https://img.shields.io/badge/TalentAI-AI%20Recruitment%20Platform-7c3aed?style=for-the-badge&logo=robot&logoColor=white)
+[![Node.js CI](https://github.com/anupmazumdar/anupmazumdar-AIRecruitmentAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/anupmazumdar/anupmazumdar-AIRecruitmentAgent)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org)
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://anupmazumdar-ai-recruitment-agent.vercel.app)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=node.js)](https://nodejs.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-06B6D4?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com)
-[![GCP](https://img.shields.io/badge/Google-Cloud-4285F4?style=for-the-badge&logo=googlecloud)](https://cloud.google.com)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
-An intelligent end-to-end recruitment platform powered by OpenRouter multi-model AI.
-100% free for candidates. Built solo by Anup Mazumdar.
-
-[Live Demo](https://anupmazumdar-ai-recruitment-agent.vercel.app) · [LinkedIn](https://www.linkedin.com/in/anup-mazumdar-1033b5321/) · [GitHub](https://github.com/anupmazumdar)
+An enterprise-grade, unified AI-powered career and recruitment monorepo platform connecting students, university training & placement officers (TPOs), and technical recruiters.
 
 ---
 
-## Overview
+## 1. Executive Summary
 
-TalentAI is a full-stack AI-powered recruitment platform that automates the hiring pipeline from resume screening to AI interviews and final candidate scoring.
-It is built as an MCA academic project at the University of Engineering & Management, Jaipur.
-
-Sole Creator: Anup Mazumdar | MCA Student | UEM Jaipur (2025-2027)
-
----
-
-## Key Features
-
-- AI Resume Parsing: Multi-model AI extracts and scores skills, experience, and education automatically.
-- AI Interview Engine: Natural language AI interviews with real-time response evaluation.
-- Technical Quiz: Auto-graded quizzes with configurable durations and semantic similarity scoring.
-- Candidate Scoring: Weighted multi-criteria scoring with detailed insights.
-- Video Assessment: Live video recording, introduction upload, and AI-powered video grading.
-- Career Coach: AI-powered career coaching panel available from Stage 2 onwards.
-- Upgrade Skills Roadmap: Superadmin-curated YouTube videos plus AI-suggested websites, blogs, articles, and courses generated after results to help candidates upskill by role and gap area.
-- Recruiter Dashboard: Real-time analytics, candidate rankings, and pipeline management.
-- Per-Recruiter Candidate Visibility: Superadmin can restrict which candidates each recruiter can view.
-- Secure Recruiter Messaging: Recruiters and superadmin can exchange near real-time messages with unread badges, attachment support, history filters, search, and blockchain-style tamper-evident message integrity.
-- Superadmin Panel: Full platform control — manage recruiters, candidates, question bank, and access policies.
-- Question Bank Management: Admins and recruiters can update and refresh quiz questions; no arbitrary add/delete.
-- Enterprise Security: JWT authentication, bcrypt encryption, and GCP storage.
-- 100% Free for Candidates: No cost, no barrier for job seekers.
+TalentAI consolidates the student career journey and corporate talent recruitment into **ONE cohesive platform**. 
+- **One Unified Frontend**: React 18 single page application with role-aware portals and responsive styling.
+- **One Layered Backend**: Node.js / Express API architecture with optional Python ML service.
+- **One Relational Database**: SQLite for instant zero-configuration local development and PostgreSQL for production scale.
+- **One Authentication System**: HS256 JWT access tokens with decoupled Role-Based Access Control (RBAC).
+- **One Two-Way Explainable Matching Engine**: Deterministic hybrid scoring algorithm serving student job discovery and recruiter candidate funnels.
 
 ---
 
-## 9-Stage Assessment Pipeline
+## 2. Platform Roles
+
+| Role | Target Persona | Key Capabilities |
+| :--- | :--- | :--- |
+| **Student** | Students, Graduates, Job Seekers | Portfolio setup, ATS resume diagnostic, skill verification, job recommendations, one-click application submission, and stage tracking. |
+| **Recruiter** | Talent Acquisition, Hiring Managers | Job creation with required/preferred skills, AI-ranked candidate funnels, transparent match score breakdowns, and stage advancement. |
+| **Admin / TPO** | College TPO, Platform Administrators | Recruiter and company verification, skill taxonomy governance, campus placement analytics, and immutable audit log review. |
+
+---
+
+## 3. Core & AI Features
+
+### 3.1 Explainable Two-Way Matching Engine
+Calculates compatibility $S(c, j) \in [0, 100]$ using deterministic, weighted criteria:
+- **Skills (40%)**: Matches required and preferred skills against canonical taxonomy and aliases.
+- **Experience (20%)**: Evaluates candidate experience years against job minimum thresholds.
+- **Education (15%)**: Evaluates academic degree alignment and graduation status.
+- **Projects (10%)**: Analyzes candidate project portfolio and technology tags.
+- **Location (10%)**: Considers remote preferences, city alignment, and relocation willingness.
+- **Certifications (5%)**: Credits accredited industry certifications.
+
+### 3.2 ATS Resume Intelligence
+- Deterministic section and keyword parser extracting contact info, skills, education, and work history.
+- Readability, keyword density, and formatting diagnostics.
+- Actionable improvement suggestions without subjective hallucination.
+
+### 3.3 Application Pipeline & Audit History
+- Structured state machine: `APPLIED` $\rightarrow$ `UNDER_REVIEW` $\rightarrow$ `SHORTLISTED` $\rightarrow$ `INTERVIEW` $\rightarrow$ `SELECTED` / `REJECTED`.
+- Immutable `application_status_history` logging timestamps, previous/new stages, and actor IDs.
+
+---
+
+## 4. Repository Structure
 
 ```text
-Stage 1          Stage 2          Stage 3          Stage 4          Stage 5
-┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ Profile │────▶│ Career  │────▶│ Resume  │────▶│  Video  │────▶│Technical│
-│ Creation│     │  Coach  │     │ Upload  │     │  Intro  │     │  Quiz   │
-└─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘
-                                                                       │
-                                                                       ▼
-Stage 9          Stage 8          Stage 7          Stage 6
-┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ Upgrade │◀────│ Results │◀────│  Live   │◀────│   AI    │
-│  Skills │     │Analytics│     │  Video  │     │Interview│
-└─────────┘     └─────────┘     └─────────┘     └─────────┘
-```
-
-| Stage | Description | AI Model |
-| --- | --- | --- |
-| 1. Profile Creation | Candidate registers and fills profile | - |
-| 2. Career Coach | AI-powered personalised guidance, skill gap analysis, and preparation tips before assessment | Claude Sonnet |
-| 3. Resume Upload | AI parses and scores resume | Gemini Pro / Llama fallback |
-| 4. Video Introduction | Candidate records intro video; AI-graded for communication quality | GCP Storage + GPT-4o |
-| 5. Technical Quiz | Domain-specific auto-graded quiz with configurable time limits | GPT-4o Mini |
-| 6. AI Interview | AI conducts structured interview | Claude Sonnet / GPT-4o fallback |
-| 7. Live Video Recording | Final video assessment with AI scoring | GCP Storage + GPT-4o |
-| 8. Results & Analytics | Scores, rankings, and detailed feedback | Multi-model |
-| 9. Upgrade Skills | AI-generated personalised learning roadmap with curated resource links based on assessment gaps | Claude Sonnet |
-
----
-
-## Tech Stack
-
-### Frontend
-
-| Technology | Purpose |
-| --- | --- |
-| React.js 18 | UI framework |
-| Tailwind CSS | Styling |
-| React Router | Navigation |
-| Fetch API | API calls |
-
-### Backend
-
-| Technology | Purpose |
-| --- | --- |
-| Node.js + Express | REST API server |
-| JWT + bcrypt | Authentication and security |
-| OpenRouter API | Multi-model AI routing |
-| Google Gemini Pro | Resume parsing support |
-| GCP Cloud Storage | Video and file storage |
-
-### Infrastructure
-
-| Technology | Purpose |
-| --- | --- |
-| Vercel | Frontend deployment |
-| Google Cloud Platform | File storage |
-| OpenRouter | AI model gateway |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js v18+
-- npm v9+
-- OpenRouter API key
-- Google Gemini API key (optional fallback)
-- GCP service account (for storage)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/anupmazumdar/anupmazumdar-AIRecruitmentAgent.git
-cd anupmazumdar-AIRecruitmentAgent
-
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Install backend dependencies
-cd ../api
-npm install
-```
-
-### Environment Setup
-
-Create `.env` in the `frontend` directory:
-
-```env
-# Optional for frontend-only experimentation
-REACT_APP_OPENROUTER_API_KEY=your_openrouter_key
-REACT_APP_API_URL=http://localhost:5000
-```
-
-Create `.env` in the `api` directory:
-
-```env
-JWT_SECRET=your_jwt_secret
-GOOGLE_GEMINI_API_KEY=your_gemini_key
-OPENROUTER_API_KEY=your_openrouter_key
-GOOGLE_CLOUD_PROJECT_ID=your_gcp_project_id
-GOOGLE_CLOUD_BUCKET_NAME=your_bucket_name
-AUTH0_DOMAIN=your_api_here
-AUTH0_CLIENT_ID=your_client_id_here
-# Comma-separated corporate domains allowed to create recruiter accounts through Auth0
-AUTH0_ALLOWED_RECRUITER_DOMAINS=yourcompany.com,partnercompany.com
-# Optional for local key file auth only (not needed on Vercel)
-GOOGLE_APPLICATION_CREDENTIALS=path_to_service_account.json
-PORT=5000
-```
-
-### Running Locally
-
-```bash
-# Start backend (from /api)
-npm start
-
-# Start frontend (from /frontend)
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## Project Structure
-
-```text
-anupmazumdar-AIRecruitmentAgent/
-├── api/
-│   ├── [...talentai].js       # Main Express API (serverless-compatible)
-│   ├── middleware/
-│   │   └── security.js        # Rate limiting, CORS, and security middleware
-│   └── uploads/
-├── frontend/                  # React.js frontend
-│   ├── src/
-│   │   ├── components/        # Reusable UI components
-│   │   ├── pages/             # Route pages
-│   │   └── lib/
-│   ├── public/
-│   └── package.json
-├── talentai.js                # Smart model router engine
-├── modelStats.js              # Model performance tracker
-├── abTest.js                  # A/B testing engine
-├── costTracker.js             # Cost tracking and reporting
-├── package.json
-├── .gitignore
+/
+├── frontend/                       # Unified React 18 Single Page Application
+│   ├── public/                     # Static assets and HTML shell
+│   ├── src/                        # Responsibility-driven frontend modules
+│   │   ├── components/             # Reusable UI primitives (Buttons, Modals, Navbar)
+│   │   ├── pages/                  # Top-level pages (Home, Privacy, Terms)
+│   │   ├── layouts/                # Shared layout shells (AppLayout)
+│   │   ├── hooks/                  # Custom hooks (useAuth, useDebounce)
+│   │   ├── services/               # API & Local Storage services
+│   │   ├── api/                    # Axios HTTP client with Bearer auth
+│   │   ├── auth/                   # AuthContext & ProtectedRoute
+│   │   ├── student/                # Student portal components
+│   │   ├── recruiter/              # Recruiter portal components
+│   │   ├── admin/                  # Admin & TPO governance views
+│   │   ├── jobs/                   # Job board and posting views
+│   │   ├── applications/           # Application tracker views
+│   │   ├── resume/                 # ATS resume diagnostic views
+│   │   ├── matching/               # Match score badges and explanations
+│   │   ├── skills/                 # Skill tags and taxonomy selector
+│   │   ├── notifications/          # In-app notification center
+│   │   ├── utils/                  # Formatting utilities
+│   │   ├── types/                  # Shared frontend enums
+│   │   └── config/                 # Endpoint configuration
+│   ├── tests/                      # Component, integration, and e2e tests
+│   ├── package.json
+│   └── README.md
+│
+├── backend/                        # Layered Express & Node.js API Service
+│   ├── app/
+│   │   ├── api/                    # Modular Express route controllers
+│   │   ├── core/                   # Auth, RBAC, DB connection, logging, error handling
+│   │   ├── models/                 # Domain entity classes
+│   │   ├── schemas/                # Request validation schemas
+│   │   ├── repositories/           # Data access layer (parameterized SQL)
+│   │   ├── services/               # Domain business logic services
+│   │   ├── ai/                     # Two-way matching engine, parser, prompts
+│   │   ├── middleware/             # Security and error middleware
+│   │   ├── utils/                  # Validators and HTTP response envelopes
+│   │   ├── server.js               # Express application entrypoint
+│   │   └── main.py                 # Python ML engine entrypoint
+│   ├── tests/                      # Unit, integration, security, and e2e tests
+│   ├── requirements.txt            # Python ML dependencies
+│   ├── package.json
+│   └── README.md
+│
+├── database/                       # Database migrations, seeds, schema, and ERD
+│   ├── schema/schema.sql           # Canonical 18-table relational DDL
+│   ├── migrations/migrate.js       # Migration runner
+│   ├── seeds/seed.js               # Canonical skill taxonomy and demo seeder
+│   ├── fixtures/                   # Test resume samples
+│   ├── ERD/database-erd.md         # Mermaid ER diagram
+│   └── README.md
+│
+├── security/                       # Security documentation & threat models
+│   ├── threat-model/               # STRIDE threat model
+│   ├── security-reports/           # Security audit and remediation report
+│   ├── penetration-tests/          # Automated penetration test suites
+│   ├── vulnerability-checklists/   # OWASP Top 10 checklist
+│   ├── security-policies/          # Candidate data privacy and access policy
+│   └── README.md
+│
+├── authentication/                 # Authentication architecture & diagrams
+│   ├── documentation/              # JWT lifecycle & RBAC matrix documentation
+│   ├── flows/                      # Registration, login, and refresh sequence diagrams
+│   ├── diagrams/                   # Architecture diagrams
+│   └── README.md
+│
+├── testing/                        # Cross-system test strategy & test plans
+│   ├── test-plans/                 # 6-gate verification plan
+│   ├── test-cases/                 # 15 deterministic matching test scenarios
+│   ├── test-data/                  # Mock test accounts and jobs
+│   ├── security-tests/             # RBAC and IDOR test documentation
+│   ├── performance-tests/          # Target latency benchmarks
+│   ├── e2e/                        # End-to-end user flows
+│   ├── reports/                    # Test execution logs
+│   └── README.md
+│
+├── docs/                           # Central platform documentation
+│   ├── architecture/               # System and module architecture docs
+│   ├── api/                        # REST API endpoint catalog
+│   ├── database/                   # Database architecture docs
+│   ├── ai/                         # Matching engine & resume intelligence docs
+│   ├── security/                   # Security architecture docs
+│   ├── deployment/                 # Deployment guides
+│   ├── user-guides/                # Student, Recruiter, and Admin user manuals
+│   └── diagrams/                   # 10 master Mermaid architectural diagrams
+│
+├── scripts/                        # Automation & developer scripts
+│   ├── setup/                      # One-click environment bootstrap (setup.ps1, setup.sh)
+│   ├── database/                   # Migration and seed scripts
+│   ├── development/                # Dev runner
+│   ├── testing/                    # Test runner scripts
+│   └── deployment/                 # Production deployment scripts
+│
+├── infrastructure/                 # Container and deployment manifests
+│   ├── docker/                     # Dockerfile.frontend, Dockerfile.backend
+│   ├── nginx/                      # Nginx reverse proxy configuration
+│   ├── deployment/                 # Production docker-compose configs
+│   └── monitoring/                 # Container healthcheck probe
+│
+├── .github/workflows/              # GitHub Actions CI/CD pipelines
+├── .env.example                    # Clean environment template (no secrets)
+├── docker-compose.yml              # Local multi-container development setup
+├── Makefile                        # Unified command shortcuts
 └── README.md
 ```
 
 ---
 
-## Superadmin & Admin System
+## 5. Getting Started (Local Development)
 
-TalentAI has a three-tier access model: **Candidate → Recruiter → Superadmin**.
+### Prerequisites
+- Node.js 18+ (Node 20 recommended)
+- npm 9+
+- Optional: Docker & Docker Compose
+- Optional: Python 3.10+ (for Python ML service)
 
-### User Roles
+### One-Click Bootstrap
+Run the setup script to install dependencies, run migrations, and seed initial demo data:
 
-| Role | Capabilities |
-| --- | --- |
-| Candidate | Complete the 9-stage pipeline, access Career Coach (Stage 2), view results, unlock Upgrade Skills roadmap |
-| Recruiter | View allowed candidates, manage question bank (update/refresh), run AI grading |
-| Superadmin | All recruiter capabilities + full platform control (see below) |
-
-### Superadmin Capabilities
-
-- **Recruiter Management** — Grant or revoke platform access, add optional access notes, remove any recruiter account (with cascade cleanup of related data).
-- **Candidate Account Management** — Grant or revoke candidate access, remove any candidate account.
-- **Per-Recruiter Candidate Visibility** — Control exactly which candidates each recruiter can view.
-  - Default: recruiter sees all candidates.
-  - Restrict mode: superadmin picks a whitelist of specific candidates per recruiter via a candidate checklist in the dashboard.
-- **Question Bank Management** — Full access to update, replace, and refresh quiz questions for any domain via the embedded Question Panel.
-- **Resource Management (Upgrade Skills)** — Add, edit, or remove YouTube video links per job role for the Upgrade Skills section (Stage 9). Candidates see superadmin-curated videos for their applied role alongside AI-suggested resources.
-- **Secure Messaging** — Chat directly with recruiters in a blockchain-style tamper-evident text messaging channel. Each message is chained with SHA-256 hashes to detect modification.
-- **Configurable Quiz Durations** — Set time limits for each quiz independently.
-- **Platform Stats** — Real-time overview of recruiter count, active access, candidate totals, and average score.
-
-### Recruiter Capabilities
-
-- View only candidates the superadmin has permitted (or all candidates if no restriction is set).
-- Update and refresh quiz questions for their domain (add/delete restricted to prevent accidental data loss).
-- View detailed candidate profiles including all assessment stages and AI scores.
-- Run AI video grading on uploaded candidate videos.
-
-### Career Coach
-
-After the candidate starts at Stage 2, the **Career Coach** panel remains accessible throughout the rest of the journey for ongoing guidance. It is powered by the same OpenRouter AI engine and provides personalised improvement guidance, skill gap analysis, and next-step recommendations based on the candidate's actual assessment results.
-
----
-
-## Upgrade Skills & Learning Roadmap
-
-After viewing their results (Stage 8), candidates unlock the **Upgrade Skills** section (Stage 9) — a dedicated page separate from the results dashboard. It combines two sources of learning content:
-
-1. **Superadmin-Curated YouTube Videos** — The superadmin can add YouTube video links per job role/domain from the admin panel. Candidates see these curated videos relevant to their applied role.
-2. **AI-Suggested Resources** — AI analyses the candidate's assessment scores and gap areas, then recommends tailored websites, blogs, articles, documentation, and courses per skill category and job role.
-
-Generated Stage 9 roadmaps are now cached per candidate based on their latest assessment-score snapshot, so candidates reopen the same saved plan instantly until they explicitly refresh it.
-
-### Superadmin: Adding YouTube Resource Links
-
-The superadmin can manage video resources from the admin panel under the **Resources** tab:
-
-- Add a YouTube video link with a title, description, and target job role tag (e.g., Backend Engineer, Data Scientist, Full-Stack Developer).
-- Edit or remove existing links at any time.
-- Links are shown only to candidates who applied for the matching role.
-- No limit on the number of videos per role.
-- Filter resources by role and search by title, description, or URL directly inside the panel.
-
-### AI-Suggested Resources by Job Role
-
-The AI generates role-specific recommendations after analysing each candidate's weak areas:
-
-#### Backend / Full-Stack Engineer
-
-| Resource | Type |
-| --- | --- |
-| [roadmap.sh/backend](https://roadmap.sh/backend) | Developer roadmap |
-| [fullstackopen.com](https://fullstackopen.com) | Full-stack course (free) |
-| [System Design Primer](https://github.com/donnemartin/system-design-primer) | GitHub guide |
-| [ByteByteGo Blog](https://blog.bytebytego.com) | System design articles |
-| [MDN Web Docs](https://developer.mozilla.org) | Reference docs |
-
-#### Frontend Engineer
-
-| Resource | Type |
-| --- | --- |
-| [roadmap.sh/frontend](https://roadmap.sh/frontend) | Developer roadmap |
-| [javascript.info](https://javascript.info) | In-depth JS guide |
-| [The Odin Project](https://www.theodinproject.com) | Full curriculum (free) |
-| [web.dev](https://web.dev) | Google's web best practices |
-| [freeCodeCamp](https://www.freecodecamp.org) | Certifications |
-
-#### Data Structures & Algorithms
-
-| Resource | Type |
-| --- | --- |
-| [LeetCode](https://leetcode.com) | Practice problems |
-| [NeetCode.io](https://neetcode.io) | Structured DSA roadmap + videos |
-| [GeeksforGeeks](https://www.geeksforgeeks.org) | Tutorials and interview prep |
-| [CS50 (Harvard)](https://cs50.harvard.edu) | Free foundational CS course |
-
-#### Data Scientist / ML Engineer
-
-| Resource | Type |
-| --- | --- |
-| [roadmap.sh/ai-data-scientist](https://roadmap.sh/ai-data-scientist) | Roadmap |
-| [fast.ai](https://www.fast.ai) | Practical deep learning (free) |
-| [Kaggle Learn](https://www.kaggle.com/learn) | Hands-on ML micro-courses |
-| [Hugging Face](https://huggingface.co/learn) | NLP and transformer models |
-| [Towards Data Science](https://towardsdatascience.com) | Blog and articles |
-| [Coursera — Andrew Ng ML](https://www.coursera.org/specializations/machine-learning-introduction) | Foundational ML course |
-
-#### Cloud / DevOps Engineer
-
-| Resource | Type |
-| --- | --- |
-| [roadmap.sh/devops](https://roadmap.sh/devops) | Roadmap |
-| [Google Cloud Skills Boost](https://cloudskillsboost.google) | GCP training and certifications |
-| [AWS Skill Builder](https://skillbuilder.aws) | AWS free training |
-| [Microsoft Learn](https://learn.microsoft.com) | Azure learning paths |
-| [KodeKloud](https://kodekloud.com) | DevOps and Kubernetes labs |
-| [The New Stack](https://thenewstack.io) | Cloud-native articles and blogs |
-
-#### General / Core Computer Science
-
-| Resource | Type |
-| --- | --- |
-| [MIT OpenCourseWare](https://ocw.mit.edu) | University-level CS courses (free) |
-| [Teach Yourself CS](https://teachyourselfcs.com) | Curated self-study curriculum |
-| [CS50](https://cs50.harvard.edu) | Intro to CS (free, Harvard) |
-| [Dev.to](https://dev.to) | Developer blogs and community |
-| [Hashnode](https://hashnode.com) | Technical blogging platform |
-
-### How It Works
-
-1. After Stage 8, the candidate's gap areas are identified from their scores.
-2. The AI maps gaps to relevant resources per skill and job role.
-3. Admin-curated YouTube videos for the candidate's role are shown at the top.
-4. AI-suggested websites, blogs, articles, and courses are listed below, grouped by category.
-5. Candidates can bookmark resources and mark topics as complete.
-
----
-
-## Video AI Grading
-
-Uploaded candidate videos are analysed by AI to produce a structured video interview score:
-
-- Transcription via GCP.
-- Content evaluation for communication quality, confidence, and relevance.
-- Score is factored into the overall weighted candidate ranking.
-
----
-
-## AI Evaluation Engine
-
-TalentAI uses a smart multi-model routing system via OpenRouter:
-
-```text
-RESUME_PARSING      → google/gemini-pro                 (fast extraction)
-CANDIDATE_SCORING   → openai/gpt-4o                     (best reasoning)
-INTERVIEW_EVAL      → anthropic/claude-3-sonnet         (language understanding)
-QUIZ_GRADING        → openai/gpt-4o-mini                (cost efficient)
-FEEDBACK_GENERATION → mistralai/mixtral-8x7b-instruct   (detailed output)
-BIAS_DETECTION      → anthropic/claude-3-sonnet         (ethical reasoning)
-JD_MATCHING         → meta-llama/llama-3-70b-instruct   (bulk ranking)
+**PowerShell (Windows):**
+```powershell
+./scripts/setup/setup.ps1
 ```
 
-Accuracy features:
+**Bash (Linux / macOS):**
+```bash
+./scripts/setup/setup.sh
+```
 
-- temperature `0.1` for consistent, deterministic outputs on analytical tasks.
-- Automatic fallback to secondary model on failure.
-- Up to 3 retry attempts across primary and fallback models.
-- JSON schema validation on every response.
-- Cost-aware routing for bulk operations and optional cheap mode.
+**Or using Make:**
+```bash
+make setup
+```
 
----
-
-## Security
-
-- JWT authentication with secure token handling.
-- bcrypt password hashing (salt rounds: 12).
-- Environment variables for all secrets (never hardcoded).
-- CORS protection on all API routes.
-- Input validation and sanitization middleware.
-- Rate limiting on authentication endpoints.
-
----
-
-## Scoring System
-
-| Component | Weight | Model |
-| --- | --- | --- |
-| Skills Match | 40% | Gemini Pro |
-| Experience | 25% | GPT-4o |
-| Education | 15% | GPT-4o |
-| Cultural Fit | 20% | Claude Sonnet |
-
-Grading Scale: A (85+) · B (70-84) · C (55-69) · D (40-54) · F (<40)
-Shortlist Threshold: 68+ weighted score
+### Running Locally
+To start both backend and frontend concurrently:
+```bash
+npm run dev
+```
+- **Frontend App**: `http://localhost:3000`
+- **Backend API**: `http://localhost:5000` (or `3001` per configuration)
+- **API Health Check**: `http://localhost:5000/api/health`
 
 ---
 
-## Recent Updates
+## 6. Seeded Demo Accounts
 
-### v2.6 — Auth0 Stability Fixes + Theme Toggle
-
-- Switched Auth0 login and signup from redirect mode to popup mode to eliminate browser `Invalid state` errors during modal-based authentication.
-- Reworked `/api/auth/auth0/session` to validate the Auth0 session through the Auth0 `/userinfo` endpoint using an access token instead of JWKS-based ID-token verification, improving Vercel serverless reliability.
-- Hardened Auth0 session error handling so audit-log failures cannot crash the serverless function during auth error paths.
-- Added a persistent top-right Light Mode / Dark Mode toggle for the full app shell; the selected theme is saved in `localStorage` under `talentai_theme`.
-
-### v2.5 — Auth0 Onboarding Hardening + Audit Logs
-
-- Enforced explicit role selection for first-time Auth0 sign in before TalentAI session creation.
-- Restricted first-time recruiter creation through Auth0 to approved email domains via `AUTH0_ALLOWED_RECRUITER_DOMAINS`.
-- Added persisted Auth0 auth-audit events (success, deny reasons, token failures) and superadmin retrieval endpoint `GET /api/superadmin/auth-audit-logs`.
-
-### v2.4 — Auth0 Session Exchange Bridge
-
-- Added backend Auth0 ID token verification using Auth0 JWKS (`/api/auth/auth0/session`).
-- Added frontend "Continue into TalentAI" action to exchange Auth0 login for existing TalentAI JWT/refresh tokens.
-- Preserved current role-based app flows (candidate, recruiter, superadmin) while enabling SSO-style session handoff.
-
-### v2.3 — Secure Chat UX + Persisted Stage 9 Plans
-
-- Added unread message badges for both recruiter and superadmin chat tabs.
-- Added conversation search, message search, and history filters (today, 7 days, 30 days, attachments, images, files, mine, peer).
-- Added file and image attachments to secure chat while preserving the same SHA-256 hash-chain integrity model.
-- Added YouTube thumbnail previews in Stage 9 and in the superadmin resource manager.
-- Added role filters and search inside the superadmin Resources tab.
-- Persisted Upgrade Skills AI suggestions per candidate and reused the saved roadmap until a refresh is requested.
-
-### v2.2 — Blockchain-Secured Recruiter Messaging
-
-- Added recruiter ↔ superadmin secure text chat inside the website.
-- Messages update in near real time via periodic refresh.
-- Each message is stored in a blockchain-style SHA-256 hash chain with integrity verification.
-- Superadmin gets a dedicated chat tab; recruiters get a secure chat tab in their dashboard.
-
-### v2.1 — Upgrade Skills Roadmap (Stage 9)
-
-- New final stage: superadmin-curated YouTube videos + AI-suggested websites, blogs, articles, and courses.
-- Superadmin can add/edit/remove YouTube links per job role from the Resources tab.
-- AI generates role-specific resource recommendations based on assessment gap areas.
-- Resources grouped by job role: Backend, Frontend, DSA, ML/AI, Cloud/DevOps, Core CS.
-- Dedicated section separate from the results dashboard.
-- Pipeline updated from 8-stage to 9-stage.
-
-### v2.0 — Superadmin Access Control & Candidate Visibility
-
-- Superadmin can now remove any recruiter or candidate account (with cascade cleanup of related views and subscriptions).
-- New `PUT /api/superadmin/recruiters/:id/candidate-access` endpoint — superadmin sets a per-recruiter candidate whitelist.
-- `GET /api/recruiter/candidates` now enforces `allowedCandidateIds` filtering; `null` means unrestricted.
-- Superadmin dashboard: collapsible Candidate Visibility panel per recruiter with "All Candidates" vs. restricted checklist mode.
-- Questions tab added to superadmin dashboard with full `AdminQuestionPanel` embedded.
-- Recruiter list, recruiter detail panel, and candidate account list all include Remove buttons.
-
-### v1.5 — Question Bank, Quiz Durations & Career Coach
-
-- Question bank policy enforced: recruiters and admins can update/refresh questions; arbitrary add/delete is restricted.
-- Quiz duration is now configurable per domain — superadmin sets time limits independently per quiz.
-- Career Coach feature: unlocked post-assessment, provides AI-driven personalised guidance.
-- Video AI grading: candidate-uploaded videos are now scored by AI and factored into the overall ranking.
-
-### v1.1 — Auth & Pipeline Fixes
-
-- Fixed `authState` prop wiring in `TechnicalQuizStage` to prevent auth context loss during quiz.
-- General security middleware hardening (`api/middleware/security.js`): rate limiting and CORS improvements.
+| Role | Email | Password | Pre-loaded Data |
+| :--- | :--- | :--- | :--- |
+| **Student** | `student@talentai.edu` | `Password@123` | MCA Student, 6 verified skills, projects, education |
+| **Recruiter** | `recruiter@techcorp.com` | `Password@123` | TechCorp Innovations recruiter, active job listing |
+| **Admin** | `admin@talentai.edu` | `Password@123` | Placement Cell TPO Admin |
 
 ---
 
-## About the Creator
+## 7. Testing Strategy & Execution
 
-Anup Mazumdar
-MCA Student - University of Engineering & Management, Jaipur (2025-2027)
-Google Cybersecurity Certified | Full-Stack Developer | ML Engineer
+The monorepo follows a strict 6-Gate verification protocol:
 
-[![GitHub](https://img.shields.io/badge/GitHub-anupmazumdar-181717?style=flat&logo=github)](https://github.com/anupmazumdar)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-anup--mazumdar-0A66C2?style=flat&logo=linkedin)](https://www.linkedin.com/in/anup-mazumdar-1033b5321/)
+```bash
+# Run all Backend test suites (Unit, Integration, Security, E2E)
+cd backend && npm test
 
-This project was built entirely solo as an MCA academic project.
-No collaborators. All code, design, and architecture by Anup Mazumdar.
+# Run all Frontend tests non-interactively
+cd frontend && npm test -- --watchAll=false
 
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+# Run comprehensive platform tests
+./scripts/testing/run-all-tests.ps1
+```
 
 ---
 
-If you found this useful, give it a star.
-Built with care ❤️ by [Anup Mazumdar](https://github.com/anupmazumdar).
+## 8. Security & OWASP Compliance
+
+- **Authentication**: JWT access tokens (HS256) and secure password hashing (`bcryptjs`).
+- **Authorization**: Declarative server-side RBAC and Object-Level Access Control (OLAC) preventing IDOR data leaks.
+- **Injection Defense**: Parameterized SQL queries on all database operations.
+- **Application Hardening**: Helmet HTTP headers, CORS whitelisting, and rate limiting.
+
+---
+
+## 9. Deployment
+
+### Using Docker Compose
+```bash
+docker-compose up --build -d
+```
+
+### Cloud Production
+- **Backend**: Deploy container to Google Cloud Run, AWS ECS, or Render.
+- **Frontend**: Deploy static bundle to Vercel, Netlify, or Cloudflare Pages.
+- **Database**: Connect managed PostgreSQL via `DATABASE_URL`.
+
+---
+
+## 10. Contribution Workflow
+
+1. Fork the repository and create a feature branch (`git checkout -b feat/your-feature`).
+2. Make modular changes adhering to layered architecture.
+3. Verify that all tests pass (`npm test` in backend and frontend).
+4. Commit using conventional commits (`feat:`, `fix:`, `docs:`, `test:`).
+5. Open a Pull Request for review.

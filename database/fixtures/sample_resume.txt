@@ -1,0 +1,28 @@
+ANUP MAZUMDAR
+Jaipur, Rajasthan, India | +91 9876543210 | student@talentai.edu
+GitHub: github.com/anupmazumdar | LinkedIn: linkedin.com/in/anup-mazumdar-1033b5321
+
+PROFESSIONAL SUMMARY
+Motivated Master of Computer Applications (MCA) student and software engineer with strong foundation in full-stack web development, REST APIs, and machine learning. Experienced in building responsive React frontends and scalable Node.js/Python backends.
+
+EDUCATION
+University of Engineering & Management (UEM), Jaipur
+Master of Computer Applications (MCA) | Expected June 2027 | CGPA: 8.9 / 10.0
+Relevant Coursework: Advanced Data Structures, Database Management Systems, Software Engineering, Cloud Computing.
+
+SKILLS
+Languages: Python, JavaScript, TypeScript, SQL, HTML5, CSS3
+Backend & APIs: Node.js, Express, FastAPI, RESTful APIs
+Frontend: React, Next.js, Tailwind CSS
+Databases: PostgreSQL, SQLite, MongoDB
+DevOps & Tools: Docker, Git, GitHub, Linux, Postman
+
+KEY PROJECTS
+Unified AI Career & Recruitment Platform | React, Node.js, Python, SQLite, Docker
+- Built an end-to-end recruitment platform uniting students, recruiters, and placement admins.
+- Designed a hybrid weighted matching engine achieving 85%+ explainable candidate-job fit scores.
+- Implemented deterministic ATS resume parsing and multi-format document generation (DOCX, LaTeX).
+
+CERTIFICATIONS
+- Meta Certified Front-End Developer
+- Python for Data Science and Machine Learning Bootcamp (Udemy)

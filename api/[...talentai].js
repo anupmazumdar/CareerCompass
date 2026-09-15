@@ -294,7 +294,7 @@ app.use('/api/admin', adminRateLimiter);
 const DEFAULT_SUPERADMIN = {
   name: process.env.SUPERADMIN_NAME || 'TalentAI Admin',
   email: (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase(),
-  password: process.env.SUPERADMIN_PASSWORD || 'Anup@2610'
+  password: process.env.SUPERADMIN_PASSWORD || ''
 };
 
 // In-memory storage (backed by cloud when available)

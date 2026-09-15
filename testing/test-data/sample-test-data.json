@@ -1,0 +1,43 @@
+{
+  "mockUsers": [
+    {
+      "email": "student.alex@example.com",
+      "role": "STUDENT",
+      "firstName": "Alex",
+      "lastName": "Rivera",
+      "skills": ["JavaScript", "React", "Node.js", "SQL", "Git"],
+      "experienceYears": 2,
+      "education": "B.Tech Computer Science"
+    },
+    {
+      "email": "recruiter.sarah@acme.com",
+      "role": "RECRUITER",
+      "firstName": "Sarah",
+      "lastName": "Connor",
+      "company": "Acme Innovations"
+    },
+    {
+      "email": "admin.tpo@university.edu",
+      "role": "ADMIN",
+      "firstName": "Prof.",
+      "lastName": "Sharma",
+      "institution": "UEM Placement Cell"
+    }
+  ],
+  "mockJobs": [
+    {
+      "title": "Full Stack React / Node Developer",
+      "requiredSkills": ["React", "Node.js", "SQL"],
+      "optionalSkills": ["Docker", "TypeScript"],
+      "minExperienceYears": 2,
+      "location": "Bengaluru (Hybrid)"
+    },
+    {
+      "title": "Junior Python Data Analyst",
+      "requiredSkills": ["Python", "SQL", "Pandas"],
+      "optionalSkills": ["Tableau"],
+      "minExperienceYears": 0,
+      "location": "Remote"
+    }
+  ]
+}
