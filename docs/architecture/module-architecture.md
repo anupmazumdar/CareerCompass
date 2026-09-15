@@ -29,11 +29,13 @@ The monorepo enforces strict separation of concerns across layers:
 │                   Database Engine                      │
 │                  database/schema/schema.sql            │
 └────────────────────────────────────────────────────────┘
+
 ```
 
 ## 2. Cross-Cutting Concerns Layer (`backend/app/core/`)
-- `authentication/`: Token generation, validation, and bcrypt hashing.
-- `authorization/`: Declarative role requirements and Object-Level Access Control (OLAC).
-- `security/`: Rate limiting, XSS filtering, and Helmet security headers.
-- `logging/`: Winston structured logger.
-- `exceptions/`: Universal error envelope formatting.
+
+* `authentication/`: Token generation, validation, and bcrypt hashing.
+* `authorization/`: Declarative role requirements and Object-Level Access Control (OLAC).
+* `security/`: Rate limiting, XSS filtering, and Helmet security headers.
+* `logging/`: Winston structured logger.
+* `exceptions/`: Universal error envelope formatting.

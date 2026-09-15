@@ -1,6 +1,7 @@
 # TalentAI Unified Backend API (`backend/`)
 
 ## Purpose
+
 The unified server-side application for the **TalentAI Career & Recruitment Platform**. Built with Node.js, Express, SQLite/PostgreSQL, and an optional Python ML service. It provides layered architecture spanning authentication, authorization, domain repositories, business services, deterministic matching, and AI intelligence.
 
 ---
@@ -66,43 +67,52 @@ backend/
 ├── requirements.txt           # Python ML dependencies
 ├── package.json               # Node.js backend dependencies and scripts
 └── README.md
+
 ```
 
 ---
 
 ## What Belongs Here
-- All RESTful API controllers, routing logic, and HTTP middleware.
-- Core business logic, domain services, and database repositories.
-- Deterministic matching calculation algorithms and AI prompts.
-- Backend automated test suites (unit, integration, security, and e2e).
+
+* All RESTful API controllers, routing logic, and HTTP middleware.
+* Core business logic, domain services, and database repositories.
+* Deterministic matching calculation algorithms and AI prompts.
+* Backend automated test suites (unit, integration, security, and e2e).
 
 ## What Does NOT Belong Here
-- React components, JSX views, and client stylesheets (belongs in `frontend/`).
-- Direct production database binary backups or raw migration files (belongs in `database/`).
-- Hardcoded secrets or credentials (belongs in `.env`).
+
+* React components, JSX views, and client stylesheets (belongs in `frontend/`).
+* Direct production database binary backups or raw migration files (belongs in `database/`).
+* Hardcoded secrets or credentials (belongs in `.env`).
 
 ---
 
 ## Important Dependencies
-- `express` (v4)
-- `sqlite3` (v5)
-- `jsonwebtoken`, `bcryptjs`
-- `helmet`, `express-rate-limit`, `cors`
-- `winston`, `morgan`
-- `docx`, `pdf-parse`, `mammoth`
-- `fastapi`, `uvicorn`, `scikit-learn`, `pydantic` (Python ML engine)
+
+* `express` (v4)
+* `sqlite3` (v5)
+* `jsonwebtoken`, `bcryptjs`
+* `helmet`, `express-rate-limit`, `cors`
+* `winston`, `morgan`
+* `docx`, `pdf-parse`, `mammoth`
+* `fastapi`, `uvicorn`, `scikit-learn`, `pydantic` (Python ML engine)
 
 ---
 
 ## How to Work With This Folder
 
 ```bash
+
 # 1. Install dependencies
+
 npm install
 
 # 2. Run all backend tests (Unit, Integration, Security, E2E)
+
 npm test
 
 # 3. Start development server
+
 npm start
+
 ```

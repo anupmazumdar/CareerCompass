@@ -19,6 +19,7 @@ database/
 ├── ERD/
 │   └── database-erd.md    # Mermaid ERD and data dictionary
 └── README.md
+
 ```
 
 ---
@@ -28,22 +29,28 @@ database/
 To initialize or reset the database:
 
 ```bash
+
 # Run migrations (creates tables and indexes)
+
 npm run db:migrate
 
 # Seed Skill Taxonomy and demo accounts
+
 npm run db:seed
+
 ```
 
 ---
 
 ## What Belongs Here
-- DDL schema files (`.sql`)
-- Database migration runners
-- Seed data and taxonomy datasets
-- Database documentation and ER diagrams
-- Test database fixtures
+
+* DDL schema files (`.sql`)
+* Database migration runners
+* Seed data and taxonomy datasets
+* Database documentation and ER diagrams
+* Test database fixtures
 
 ## What Does NOT Belong Here
-- ORM / query implementation code (lives in `backend/app/models/` and `backend/app/repositories/`)
-- Secret credentials or production database backups
+
+* ORM / query implementation code (lives in `backend/app/models/` and `backend/app/repositories/`)
+* Secret credentials or production database backups

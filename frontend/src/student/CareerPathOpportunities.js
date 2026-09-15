@@ -3,21 +3,12 @@ import {
   Search,
   Briefcase,
   MapPin,
-  Calendar,
   Sparkles,
   CheckCircle2,
-  XCircle,
-  Clock,
-  Filter,
   ArrowRight,
-  ExternalLink,
-  Bookmark,
-  ChevronRight,
   Check,
   AlertCircle,
-  Building2,
-  SlidersHorizontal,
-  DollarSign
+  SlidersHorizontal
 } from 'lucide-react';
 import { api } from '../api/client';
 

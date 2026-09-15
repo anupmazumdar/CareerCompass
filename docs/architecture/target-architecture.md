@@ -1,8 +1,8 @@
 # Target Architecture: Unified Career & TalentAI Recruitment Platform
 
-**Lead Author**: Agent 1 (Architect / Tech Lead)  
-**Contributors**: Agent 2 (Backend), Agent 3 (Frontend), Agent 4 (Database), Agent 5 (Security), Agent 6 (QA)  
-**Status**: Proposal for Review  
+**Lead Author**: Agent 1 (Architect / Tech Lead)
+**Contributors**: Agent 2 (Backend), Agent 3 (Frontend), Agent 4 (Database), Agent 5 (Security), Agent 6 (QA)
+**Status**: Proposal for Review
 **Document Path**: `docs/architecture/target-architecture.md`
 
 ---
@@ -12,6 +12,7 @@
 The unified platform consolidates the Student Career Platform and TalentAI into **ONE unified AI-powered career and recruitment platform**. TalentAI serves as the AI intelligence, resume analysis, and matching layer embedded directly within the career platform.
 
 ### Core Architectural Axioms
+
 1. **ONE Frontend Application**: A single React application with role-aware routing (`/student/*`, `/recruiter/*`, `/admin/*`). Shared design tokens, forms, UI components, and API client.
 2. **ONE Modular Backend Server**: A single Express REST API structured in domain modules (`auth/`, `users/`, `students/`, `recruiters/`, `companies/`, `jobs/`, `applications/`, `resumes/`, `skills/`, `matching/`, `admin/`).
 3. **ONE Normalized Relational Database**: A clean SQL schema with foreign keys, indexes, and transactional guarantees, replacing the unstable GCS JSON storage.
@@ -61,6 +62,7 @@ graph TD
     MOD_RESUME --> GCS
     MOD_AI --> LLM_GW
     Backend_Modules --> DB
+
 ```
 
 ---
@@ -69,19 +71,19 @@ graph TD
 
 ### 2.1 Backend Modules (`api/modules/`)
 
-| Module | Responsibility | Inbound Dependencies | Outbound Dependencies |
-| :--- | :--- | :--- | :--- |
-| `auth/` | Registration, login, password hashing, JWT access/refresh token management, session revocation | Public / All | `users/`, `audit_logs` |
-| `students/` | Student profiles, education, experience, projects, certifications, student skills | Student, Recruiter (authorized), Admin | `users/`, `skills/`, `resumes/` |
-| `recruiters/` | Recruiter profile, verification state, company association | Recruiter, Admin | `users/`, `companies/` |
-| `companies/` | Company profile, verification status, recruiter members | Recruiter, Admin, Public | `users/` |
-| `jobs/` | Job creation, editing, publishing, skill requirements, filters, closing | Recruiter, Student, Admin | `companies/`, `skills/` |
-| `applications/`| Job application lifecycle (`APPLIED` -> `UNDER_REVIEW` -> `SHORTLISTED` -> `INTERVIEW` -> `SELECTED` / `REJECTED`), status audit history | Student, Recruiter, Admin | `students/`, `jobs/`, `matching/` |
-| `skills/` | Canonical skill directory, categories, aliases, hierarchy, normalization | All modules | Database |
-| `matching/` | Two-way hybrid weighted matching engine (Student <-> Job), score explanations, gap analysis | Student (`recommended-jobs`), Recruiter (`candidate-ranking`), Applications | `skills/`, `students/`, `jobs/` |
-| `resumes/` | Document upload, deterministic parsing, ATS scoring, Docx/LaTeX generation | Student, Recruiter (authorized) | Storage (GCS/Local), `skills/` |
-| `ai/` | Multi-model routing (OpenRouter/Gemini/Claude), interview evaluator, quiz generation, bias detection | Student, Recruiter, Admin | External AI APIs |
-| `admin/` | Recruiter approvals, company management, platform statistics, audit logs, skill taxonomy maintenance | Admin/TPO | All modules |
+ | Module | Responsibility | Inbound Dependencies | Outbound Dependencies | 
+ | :--- | :--- | :--- | :--- | 
+ | `auth/` | Registration, login, password hashing, JWT access/refresh token management, session revocation | Public / All | `users/`, `audit_logs` | 
+ | `students/` | Student profiles, education, experience, projects, certifications, student skills | Student, Recruiter (authorized), Admin | `users/`, `skills/`, `resumes/` | 
+ | `recruiters/` | Recruiter profile, verification state, company association | Recruiter, Admin | `users/`, `companies/` | 
+ | `companies/` | Company profile, verification status, recruiter members | Recruiter, Admin, Public | `users/` | 
+ | `jobs/` | Job creation, editing, publishing, skill requirements, filters, closing | Recruiter, Student, Admin | `companies/`, `skills/` | 
+ | `applications/` | Job application lifecycle (`APPLIED` -> `UNDER_REVIEW` -> `SHORTLISTED` -> `INTERVIEW` -> `SELECTED` / `REJECTED`), status audit history | Student, Recruiter, Admin | `students/`, `jobs/`, `matching/` | 
+ | `skills/` | Canonical skill directory, categories, aliases, hierarchy, normalization | All modules | Database | 
+ | `matching/` | Two-way hybrid weighted matching engine (Student <-> Job), score explanations, gap analysis | Student (`recommended-jobs`), Recruiter (`candidate-ranking`), Applications | `skills/`, `students/`, `jobs/` | 
+ | `resumes/` | Document upload, deterministic parsing, ATS scoring, Docx/LaTeX generation | Student, Recruiter (authorized) | Storage (GCS/Local), `skills/` | 
+ | `ai/` | Multi-model routing (OpenRouter/Gemini/Claude), interview evaluator, quiz generation, bias detection | Student, Recruiter, Admin | External AI APIs | 
+ | `admin/` | Recruiter approvals, company management, platform statistics, audit logs, skill taxonomy maintenance | Admin/TPO | All modules | 
 
 ---
 
@@ -120,6 +122,7 @@ sequenceDiagram
     ME-->>API: Return Ranked Candidates + Explanations
     API-->>R: JSON [{ candidate, matchScore: 88%, breakdown, explainableSummary }]
     end
+
 ```
 
 ---
@@ -158,6 +161,7 @@ The frontend shifts from single-file state toggles in `App.js` to declarative, p
   ├── jobs                          -> Platform-wide Job Moderation
   ├── skills                        -> Skill Taxonomy Manager (Canonical Names, Aliases, Categories)
   └── audit-logs                    -> System Security & Authorization Logs
+
 ```
 
 ---

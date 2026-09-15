@@ -1,6 +1,7 @@
 # Student User Guide: TalentAI Platform
 
 ## Getting Started as a Student
+
 1. **Create Account**: Register with university email and select "Student" role.
 2. **Setup Profile**: Complete degree information, GPA, technical skills, and projects.
 3. **Upload Resume**: Use the Resume Intelligence view to score your resume before applying.

@@ -1,7 +1,7 @@
 # Initial Platform Test Run Report
 
-**Date**: September 2026  
-**Test Runner**: Node.js v20 built-in test runner (`node --test`)  
+**Date**: September 2026
+**Test Runner**: Node.js v20 built-in test runner (`node --test`)
 **Status**: 100% PASSING (6 / 6 test suites)
 
 ---
@@ -28,10 +28,12 @@
 ℹ skipped 0
 ℹ todo 0
 ℹ duration_ms 2837.66
+
 ```
 
 ### Observations
-- Zero failures across all gates.
-- Authentication cycle completes in < 800ms end-to-end including password hashing.
-- Role checks prevent student tokens from accessing recruiter endpoints.
-- Matching engine correctly executes mathematical weights without floating point anomalies or NaN returns.
+
+* Zero failures across all gates.
+* Authentication cycle completes in < 800ms end-to-end including password hashing.
+* Role checks prevent student tokens from accessing recruiter endpoints.
+* Matching engine correctly executes mathematical weights without floating point anomalies or NaN returns.

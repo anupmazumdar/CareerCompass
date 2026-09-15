@@ -21,9 +21,7 @@ import {
   Phone,
   Briefcase,
   Check,
-  ShieldCheck,
-  Clock,
-  ArrowRight
+  ShieldCheck
 } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -126,6 +124,7 @@ export function CareerPathProfile() {
 
   useEffect(() => {
     loadProfileData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handlers

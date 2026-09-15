@@ -1,6 +1,7 @@
 # TalentAI Frontend Web Application (`frontend/`)
 
 ## Purpose
+
 The single-page web client for the **Unified TalentAI Career & Recruitment Platform**. Built with React 18, React Router v6, Tailwind CSS, and Lucide React. It provides unified, role-tailored user interfaces for Students, Recruiters, and Admins/TPOs.
 
 ---
@@ -40,44 +41,54 @@ frontend/
 │   └── e2e/                   # User journey simulations
 ├── package.json
 └── README.md
+
 ```
 
 ---
 
 ## What Belongs Here
-- All client-side UI components, views, pages, and interactive layouts.
-- Client-side routing, navigation guards, and role-based route protections.
-- Client state management (`AuthContext`, local storage sync).
-- Component unit, integration, and UI tests.
+
+* All client-side UI components, views, pages, and interactive layouts.
+* Client-side routing, navigation guards, and role-based route protections.
+* Client state management (`AuthContext`, local storage sync).
+* Component unit, integration, and UI tests.
 
 ## What Does NOT Belong Here
-- Backend server logic, Express route controllers, and direct database queries (belongs in `backend/`).
-- Private API keys, JWT secret keys, or database credentials (belongs in `.env`).
-- Database migration DDL or seeds (belongs in `database/`).
+
+* Backend server logic, Express route controllers, and direct database queries (belongs in `backend/`).
+* Private API keys, JWT secret keys, or database credentials (belongs in `.env`).
+* Database migration DDL or seeds (belongs in `database/`).
 
 ---
 
 ## Important Dependencies
-- `react`, `react-dom` (v18)
-- `react-router-dom` (v6)
-- `tailwindcss` & `postcss`
-- `lucide-react` (icons)
-- `@testing-library/react` and `@testing-library/jest-dom`
+
+* `react`, `react-dom` (v18)
+* `react-router-dom` (v6)
+* `tailwindcss` & `postcss`
+* `lucide-react` (icons)
+* `@testing-library/react` and `@testing-library/jest-dom`
 
 ---
 
 ## How to Work With This Folder
 
 ```bash
+
 # 1. Install dependencies
+
 npm install
 
 # 2. Start local development server (http://localhost:3000)
+
 npm start
 
 # 3. Run automated tests non-interactively
+
 npm test -- --watchAll=false
 
 # 4. Build production static bundle
+
 npm run build
+
 ```

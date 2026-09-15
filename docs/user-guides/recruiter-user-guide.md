@@ -1,6 +1,7 @@
 # Recruiter User Guide: TalentAI Platform
 
 ## Getting Started as a Recruiter
+
 1. **Sign In**: Log into the Recruiter portal with your company credentials.
 2. **Post Job Openings**: Create job listings specifying required and preferred skills, salary range, and experience.
 3. **Review Ranked Funnel**: View applicants automatically sorted by hybrid match score.

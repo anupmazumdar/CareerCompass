@@ -1,9 +1,11 @@
 # Database Architecture & Relational Data Model
 
 ## 1. Overview
+
 The database schema consists of 18 normalized relational tables designed to support ACID transactions, auditability, and deterministic skill matching.
 
 ## 2. Table Catalog
+
 1. `users`: Unified identity records for Student, Recruiter, and Admin.
 2. `student_profiles`: Academic and career preferences.
 3. `recruiter_profiles`: Employer designations and company affiliations.

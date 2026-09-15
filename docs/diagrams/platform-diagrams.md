@@ -3,6 +3,7 @@
 ---
 
 ## 1. Overall System Architecture
+
 ```mermaid
 graph TD
     User([Students, Recruiters, Admins])
@@ -17,11 +18,13 @@ graph TD
     Gateway --> Backend
     Backend --> Matcher
     Backend --> DB
+
 ```
 
 ---
 
 ## 2. Frontend / Backend Architecture
+
 ```mermaid
 graph LR
     subgraph Frontend
@@ -41,11 +44,13 @@ graph LR
     Router --> Auth
     Auth --> Services
     Services --> Repo
+
 ```
 
 ---
 
 ## 3. Database Entity-Relationship Diagram (ERD)
+
 ```mermaid
 erDiagram
     users ||--o| student_profiles : has
@@ -59,11 +64,13 @@ erDiagram
     student_profiles ||--o{ applications : submits
     jobs ||--o{ applications : receives
     applications ||--o{ application_status_history : tracks
+
 ```
 
 ---
 
 ## 4. Authentication Flow
+
 ```mermaid
 sequenceDiagram
     Client->>API: POST /api/auth/login { email, password }
@@ -72,11 +79,13 @@ sequenceDiagram
     API->>API: Verify password via bcrypt
     API->>API: Sign HS256 JWT
     API-->>Client: Return { accessToken, user }
+
 ```
 
 ---
 
 ## 5. Authorization & RBAC
+
 ```mermaid
 graph TD
     Req[Incoming HTTP Request] --> CheckToken{Has Valid JWT?}
@@ -84,11 +93,13 @@ graph TD
     CheckToken -- Yes --> CheckRole{Has Required Role?}
     CheckRole -- No --> Ret403[403 Forbidden]
     CheckRole -- Yes --> Controller[Execute Controller]
+
 ```
 
 ---
 
 ## 6. Resume Processing Lifecycle
+
 ```mermaid
 flowchart TD
     RawFile[Resume Upload / Text] --> Parse[Deterministic Section Parser]
@@ -96,11 +107,13 @@ flowchart TD
     Extract --> Score[Calculate ATS Score & Diagnostic]
     Score --> Save[(Persist to DB)]
     Save --> Return[Return Diagnostic & Recommendations]
+
 ```
 
 ---
 
 ## 7. Two-Way Hybrid Matching Engine
+
 ```mermaid
 graph TD
     Cand[Candidate Profile] --> Matcher[Hybrid Matching Engine]
@@ -108,11 +121,13 @@ graph TD
     Taxonomy[(Canonical Skill Taxonomy)] --> Matcher
     Matcher --> Weights["Apply Weights: 40% Skills, 20% Exp, 15% Edu, 10% Proj, 10% Loc, 5% Cert"]
     Weights --> FinalScore[Explainable Match Score 0-100%]
+
 ```
 
 ---
 
 ## 8. Student Job Recommendation Flow
+
 ```mermaid
 sequenceDiagram
     Student->>API: GET /api/recommendations/jobs
@@ -120,11 +135,13 @@ sequenceDiagram
     API->>Engine: Score Jobs against Student Profile
     Engine-->>API: Scored Job List
     API-->>Student: Return Top Ranked Jobs with Match Explanations
+
 ```
 
 ---
 
 ## 9. Recruiter Candidate Ranking Flow
+
 ```mermaid
 sequenceDiagram
     Recruiter->>API: GET /api/matching/jobs/:jobId/candidates
@@ -132,11 +149,13 @@ sequenceDiagram
     API->>Engine: Calculate Match Breakdown per Applicant
     Engine-->>API: Ranked Candidate List
     API-->>Recruiter: Display Candidate Funnel Sorted by Score
+
 ```
 
 ---
 
 ## 10. Application Lifecycle State Machine
+
 ```mermaid
 stateDiagram-v2
     [*] --> Applied
@@ -148,4 +167,5 @@ stateDiagram-v2
     Interview --> Rejected : Unsuccessful interview
     Offer --> [*]
     Rejected --> [*]
+
 ```

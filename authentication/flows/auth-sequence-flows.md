@@ -1,6 +1,6 @@
 # Authentication Sequence Flows
 
-### 1. User Registration Flow
+## 1. User Registration Flow
 
 ```mermaid
 sequenceDiagram
@@ -24,6 +24,7 @@ sequenceDiagram
         CoreAuth-->>AuthAPI: token
         AuthAPI-->>Client: 201 Created { token, user: { id, email, role } }
     end
+
 ```
 
 ### 2. User Login Flow
@@ -50,4 +51,5 @@ sequenceDiagram
             AuthAPI-->>Client: 200 OK { token, user: { id, email, role, firstName, lastName } }
         end
     end
+
 ```

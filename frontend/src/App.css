@@ -121,6 +121,7 @@ html {
   z-index: 20;
   margin-bottom: 1rem;
   padding: 1rem 0;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -414,6 +415,7 @@ html {
   padding: 1.35rem;
   border-radius: 1.6rem;
   background: var(--surface);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
 }
 
@@ -692,6 +694,7 @@ html {
   cursor: pointer;
   white-space: nowrap;
   transition: all 160ms ease;
+  -webkit-user-select: none;
   user-select: none;
 }
 

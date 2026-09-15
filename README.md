@@ -11,44 +11,49 @@ An enterprise-grade, unified AI-powered career and recruitment monorepo platform
 
 ## 1. Executive Summary
 
-TalentAI consolidates the student career journey and corporate talent recruitment into **ONE cohesive platform**. 
-- **One Unified Frontend**: React 18 single page application with role-aware portals and responsive styling.
-- **One Layered Backend**: Node.js / Express API architecture with optional Python ML service.
-- **One Relational Database**: SQLite for instant zero-configuration local development and PostgreSQL for production scale.
-- **One Authentication System**: HS256 JWT access tokens with decoupled Role-Based Access Control (RBAC).
-- **One Two-Way Explainable Matching Engine**: Deterministic hybrid scoring algorithm serving student job discovery and recruiter candidate funnels.
+TalentAI consolidates the student career journey and corporate talent recruitment into **ONE cohesive platform**.
+
+* **One Unified Frontend**: React 18 single page application with role-aware portals and responsive styling.
+* **One Layered Backend**: Node.js / Express API architecture with optional Python ML service.
+* **One Relational Database**: SQLite for instant zero-configuration local development and PostgreSQL for production scale.
+* **One Authentication System**: HS256 JWT access tokens with decoupled Role-Based Access Control (RBAC).
+* **One Two-Way Explainable Matching Engine**: Deterministic hybrid scoring algorithm serving student job discovery and recruiter candidate funnels.
 
 ---
 
 ## 2. Platform Roles
 
-| Role | Target Persona | Key Capabilities |
-| :--- | :--- | :--- |
-| **Student** | Students, Graduates, Job Seekers | Portfolio setup, ATS resume diagnostic, skill verification, job recommendations, one-click application submission, and stage tracking. |
-| **Recruiter** | Talent Acquisition, Hiring Managers | Job creation with required/preferred skills, AI-ranked candidate funnels, transparent match score breakdowns, and stage advancement. |
-| **Admin / TPO** | College TPO, Platform Administrators | Recruiter and company verification, skill taxonomy governance, campus placement analytics, and immutable audit log review. |
+ | Role | Target Persona | Key Capabilities | 
+ | :--- | :--- | :--- | 
+ | **Student** | Students, Graduates, Job Seekers | Portfolio setup, ATS resume diagnostic, skill verification, job recommendations, one-click application submission, and stage tracking. | 
+ | **Recruiter** | Talent Acquisition, Hiring Managers | Job creation with required/preferred skills, AI-ranked candidate funnels, transparent match score breakdowns, and stage advancement. | 
+ | **Admin / TPO** | College TPO, Platform Administrators | Recruiter and company verification, skill taxonomy governance, campus placement analytics, and immutable audit log review. | 
 
 ---
 
 ## 3. Core & AI Features
 
 ### 3.1 Explainable Two-Way Matching Engine
+
 Calculates compatibility $S(c, j) \in [0, 100]$ using deterministic, weighted criteria:
-- **Skills (40%)**: Matches required and preferred skills against canonical taxonomy and aliases.
-- **Experience (20%)**: Evaluates candidate experience years against job minimum thresholds.
-- **Education (15%)**: Evaluates academic degree alignment and graduation status.
-- **Projects (10%)**: Analyzes candidate project portfolio and technology tags.
-- **Location (10%)**: Considers remote preferences, city alignment, and relocation willingness.
-- **Certifications (5%)**: Credits accredited industry certifications.
+
+* **Skills (40%)**: Matches required and preferred skills against canonical taxonomy and aliases.
+* **Experience (20%)**: Evaluates candidate experience years against job minimum thresholds.
+* **Education (15%)**: Evaluates academic degree alignment and graduation status.
+* **Projects (10%)**: Analyzes candidate project portfolio and technology tags.
+* **Location (10%)**: Considers remote preferences, city alignment, and relocation willingness.
+* **Certifications (5%)**: Credits accredited industry certifications.
 
 ### 3.2 ATS Resume Intelligence
-- Deterministic section and keyword parser extracting contact info, skills, education, and work history.
-- Readability, keyword density, and formatting diagnostics.
-- Actionable improvement suggestions without subjective hallucination.
+
+* Deterministic section and keyword parser extracting contact info, skills, education, and work history.
+* Readability, keyword density, and formatting diagnostics.
+* Actionable improvement suggestions without subjective hallucination.
 
 ### 3.3 Application Pipeline & Audit History
-- Structured state machine: `APPLIED` $\rightarrow$ `UNDER_REVIEW` $\rightarrow$ `SHORTLISTED` $\rightarrow$ `INTERVIEW` $\rightarrow$ `SELECTED` / `REJECTED`.
-- Immutable `application_status_history` logging timestamps, previous/new stages, and actor IDs.
+
+* Structured state machine: `APPLIED` $\rightarrow$ `UNDER_REVIEW` $\rightarrow$ `SHORTLISTED` $\rightarrow$ `INTERVIEW` $\rightarrow$ `SELECTED` / `REJECTED`.
+* Immutable `application_status_history` logging timestamps, previous/new stages, and actor IDs.
 
 ---
 
@@ -160,6 +165,7 @@ Calculates compatibility $S(c, j) \in [0, 100]$ using deterministic, weighted cr
 ├── docker-compose.yml              # Local multi-container development setup
 ├── Makefile                        # Unified command shortcuts
 └── README.md
+
 ```
 
 ---
@@ -167,47 +173,59 @@ Calculates compatibility $S(c, j) \in [0, 100]$ using deterministic, weighted cr
 ## 5. Getting Started (Local Development)
 
 ### Prerequisites
-- Node.js 18+ (Node 20 recommended)
-- npm 9+
-- Optional: Docker & Docker Compose
-- Optional: Python 3.10+ (for Python ML service)
+
+* Node.js 18+ (Node 20 recommended)
+* npm 9+
+* Optional: Docker & Docker Compose
+* Optional: Python 3.10+ (for Python ML service)
 
 ### One-Click Bootstrap
+
 Run the setup script to install dependencies, run migrations, and seed initial demo data:
 
 **PowerShell (Windows):**
+
 ```powershell
 ./scripts/setup/setup.ps1
+
 ```
 
 **Bash (Linux / macOS):**
+
 ```bash
 ./scripts/setup/setup.sh
+
 ```
 
 **Or using Make:**
+
 ```bash
 make setup
+
 ```
 
 ### Running Locally
+
 To start both backend and frontend concurrently:
+
 ```bash
 npm run dev
+
 ```
-- **Frontend App**: `http://localhost:3000`
-- **Backend API**: `http://localhost:5000` (or `3001` per configuration)
-- **API Health Check**: `http://localhost:5000/api/health`
+
+* **Frontend App**: `http://localhost:3000`
+* **Backend API**: `http://localhost:5000` (or `3001` per configuration)
+* **API Health Check**: `http://localhost:5000/api/health`
 
 ---
 
 ## 6. Seeded Demo Accounts
 
-| Role | Email | Password | Pre-loaded Data |
-| :--- | :--- | :--- | :--- |
-| **Student** | `student@talentai.edu` | `Password@123` | MCA Student, 6 verified skills, projects, education |
-| **Recruiter** | `recruiter@techcorp.com` | `Password@123` | TechCorp Innovations recruiter, active job listing |
-| **Admin** | `admin@talentai.edu` | `Password@123` | Placement Cell TPO Admin |
+ | Role | Email | Password | Pre-loaded Data | 
+ | :--- | :--- | :--- | :--- | 
+ | **Student** | `student@talentai.edu` | `Password@123` | MCA Student, 6 verified skills, projects, education | 
+ | **Recruiter** | `recruiter@techcorp.com` | `Password@123` | TechCorp Innovations recruiter, active job listing | 
+ | **Admin** | `admin@talentai.edu` | `Password@123` | Placement Cell TPO Admin | 
 
 ---
 
@@ -216,38 +234,46 @@ npm run dev
 The monorepo follows a strict 6-Gate verification protocol:
 
 ```bash
+
 # Run all Backend test suites (Unit, Integration, Security, E2E)
+
 cd backend && npm test
 
 # Run all Frontend tests non-interactively
+
 cd frontend && npm test -- --watchAll=false
 
 # Run comprehensive platform tests
+
 ./scripts/testing/run-all-tests.ps1
+
 ```
 
 ---
 
 ## 8. Security & OWASP Compliance
 
-- **Authentication**: JWT access tokens (HS256) and secure password hashing (`bcryptjs`).
-- **Authorization**: Declarative server-side RBAC and Object-Level Access Control (OLAC) preventing IDOR data leaks.
-- **Injection Defense**: Parameterized SQL queries on all database operations.
-- **Application Hardening**: Helmet HTTP headers, CORS whitelisting, and rate limiting.
+* **Authentication**: JWT access tokens (HS256) and secure password hashing (`bcryptjs`).
+* **Authorization**: Declarative server-side RBAC and Object-Level Access Control (OLAC) preventing IDOR data leaks.
+* **Injection Defense**: Parameterized SQL queries on all database operations.
+* **Application Hardening**: Helmet HTTP headers, CORS whitelisting, and rate limiting.
 
 ---
 
 ## 9. Deployment
 
 ### Using Docker Compose
+
 ```bash
 docker-compose up --build -d
+
 ```
 
 ### Cloud Production
-- **Backend**: Deploy container to Google Cloud Run, AWS ECS, or Render.
-- **Frontend**: Deploy static bundle to Vercel, Netlify, or Cloudflare Pages.
-- **Database**: Connect managed PostgreSQL via `DATABASE_URL`.
+
+* **Backend**: Deploy container to Google Cloud Run, AWS ECS, or Render.
+* **Frontend**: Deploy static bundle to Vercel, Netlify, or Cloudflare Pages.
+* **Database**: Connect managed PostgreSQL via `DATABASE_URL`.
 
 ---
 
