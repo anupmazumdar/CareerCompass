@@ -113,7 +113,27 @@ app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 // 6. Server Initialization
-function startServer(port = config.port) {
+async function ensureAdminUser() {
+  try {
+    const email = (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase();
+    const existing = await db.get('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL', [email]);
+    if (!existing) {
+      const password = process.env.SUPERADMIN_PASSWORD || 'Anup@2610';
+      const { hashPassword } = require('./core/authentication/auth');
+      const hash = await hashPassword(password);
+      await db.run(
+        `INSERT INTO users (email, password_hash, role, full_name, status) VALUES (?, ?, 'admin', ?, 'active')`,
+        [email, hash, process.env.SUPERADMIN_NAME || 'TalentAI Admin']
+      );
+      logger.info(`🔐 Seeded initial admin account: ${email}`);
+    }
+  } catch (err) {
+    logger.warn(`⚠️ ensureAdminUser notice: ${err.message}`);
+  }
+}
+
+async function startServer(port = config.port) {
+  await ensureAdminUser();
   return new Promise((resolve) => {
     const server = app.listen(port, () => {
       logger.info(`🚀 Unified TalentAI Backend running on port ${port} [env: ${config.nodeEnv}]`);

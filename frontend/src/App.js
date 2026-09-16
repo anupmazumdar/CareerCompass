@@ -302,23 +302,64 @@ export default function AIRecruitmentAgent() {
             currency={currency}
             setCurrency={setCurrency}
           />
-        ) : userType === 'candidate' ? (
-          <CandidatePortal
-            setUserType={setUserType}
-            subscription={subscription}
-            authState={authState}
-            logout={logout}
-          />
-        ) : userType === 'superadmin' ? (
-          <SuperAdminDashboard authState={authState} logout={logout} />
         ) : (
-          <RecruiterDashboard
-            setUserType={setUserType}
-            subscription={subscription}
-            setShowSubscriptionModal={setShowSubscriptionModal}
-            authState={authState}
-            logout={logout}
-          />
+          <>
+            {/* SuperAdmin Multi-Role Switcher Banner */}
+            {authState?.isAuthenticated && authState?.user?.userType === 'superadmin' && userType !== 'superadmin' && (
+              <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white px-4 py-2 text-xs font-medium flex flex-wrap items-center justify-between gap-2 shadow-lg sticky top-0 z-50 border-b border-amber-500/30 backdrop-blur-md">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>🛡️ <strong>SuperAdmin Preview Mode:</strong> Viewing platform as <span className="underline decoration-amber-300 font-bold capitalize">{userType}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {userType !== 'candidate' && (
+                    <button
+                      type="button"
+                      onClick={() => setUserType('candidate')}
+                      className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors"
+                    >
+                      View as Candidate
+                    </button>
+                  )}
+                  {userType !== 'recruiter' && (
+                    <button
+                      type="button"
+                      onClick={() => setUserType('recruiter')}
+                      className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors"
+                    >
+                      View as Recruiter
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setUserType('superadmin')}
+                    className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-400/40 px-3 py-1 rounded text-xs font-bold transition-all shadow"
+                  >
+                    Back to Admin Dashboard ↵
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {userType === 'candidate' ? (
+              <CandidatePortal
+                setUserType={setUserType}
+                subscription={subscription}
+                authState={authState}
+                logout={logout}
+              />
+            ) : userType === 'superadmin' ? (
+              <SuperAdminDashboard authState={authState} logout={logout} setUserType={setUserType} />
+            ) : (
+              <RecruiterDashboard
+                setUserType={setUserType}
+                subscription={subscription}
+                setShowSubscriptionModal={setShowSubscriptionModal}
+                authState={authState}
+                logout={logout}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -870,6 +911,47 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
               required
               minLength={8}
             />
+          )}
+
+          {authMode === 'login' && (
+            <div className="pt-2 border-t border-slate-700/60 text-xs">
+              <p className="text-slate-400 mb-1.5 font-medium text-[11px]">Quick Credentials Fill:</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, email: 'anupmazumdar987@gmail.com', password: 'Anup@2610' }));
+                    setAuthUserType('superadmin');
+                    setError('');
+                  }}
+                  className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded text-[11px] font-medium transition-colors"
+                >
+                  🛡️ Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, email: 'student@talentai.edu', password: 'Password@123', userType: 'candidate' }));
+                    setAuthUserType('candidate');
+                    setError('');
+                  }}
+                  className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-medium transition-colors"
+                >
+                  🎓 Candidate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, email: 'recruiter@techcorp.com', password: 'Password@123', userType: 'recruiter' }));
+                    setAuthUserType('recruiter');
+                    setError('');
+                  }}
+                  className="px-2 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 rounded text-[11px] font-medium transition-colors"
+                >
+                  💼 Recruiter
+                </button>
+              </div>
+            </div>
           )}
 
           <button
@@ -7251,7 +7333,7 @@ function TPOAnalyticsDashboard({ authState }) {
 }
 
 // ==================== SUPER-ADMIN DASHBOARD ====================
-function SuperAdminDashboard({ authState, logout }) {
+function SuperAdminDashboard({ authState, logout, setUserType }) {
   const [recruiters, setRecruiters] = useState([]);
   const [candidateAccounts, setCandidateAccounts] = useState([]);
   const [stats, setStats] = useState(null);
@@ -7406,9 +7488,29 @@ function SuperAdminDashboard({ authState, logout }) {
           <h1 className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-2xl font-black text-transparent md:text-3xl">Super Admin</h1>
           <p className="mt-0.5 text-sm text-slate-400 md:text-base">Grant or revoke platform access for recruiters and candidates</p>
         </div>
-        <button onClick={logout} className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50 md:text-base">
-          <LogOut size={14} /> Logout
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {setUserType && (
+            <>
+              <button
+                type="button"
+                onClick={() => setUserType('candidate')}
+                className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-600/20 px-3.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-600/30 transition-all"
+              >
+                🎓 View Candidate Portal
+              </button>
+              <button
+                type="button"
+                onClick={() => setUserType('recruiter')}
+                className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-600/20 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/30 transition-all"
+              >
+                💼 View Recruiter Portal
+              </button>
+            </>
+          )}
+          <button onClick={logout} className="flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50">
+            <LogOut size={14} /> Logout
+          </button>
+        </div>
       </div>
 
       {/* Stats row */}

@@ -110,6 +110,15 @@ function seedDatabase() {
         // 3. Demo accounts
         const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
 
+        // Superadmin (Project Owner)
+        const superadminEmail = (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase();
+        const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'Anup@2610';
+        const superadminHash = await bcrypt.hash(superadminPassword, 10);
+        await run(
+          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,
+          [superadminEmail, superadminHash, process.env.SUPERADMIN_NAME || 'TalentAI Admin', '+91 9876543210']
+        );
+
         // Admin
         await run(
           `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,

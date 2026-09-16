@@ -296,7 +296,7 @@ const DEFAULT_SUPERADMIN = {
   name: process.env.SUPERADMIN_NAME || 'TalentAI Admin',
   username: (process.env.SUPERADMIN_USERNAME || 'anupmazumdar').toLowerCase(),
   email: (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase(),
-  password: process.env.SUPERADMIN_PASSWORD || ''
+  password: process.env.SUPERADMIN_PASSWORD || 'Anup@2610'
 };
 
 // In-memory storage (backed by cloud when available)
@@ -495,6 +495,7 @@ async function initializeData() {
   if (applications.length > 0) applicationId = Math.max(...applications.map(a => a.id)) + 1;
 
   await ensureSuperAdminAccount();
+  await ensureDemoAccounts();
 
   console.log(`📊 Data loaded: ${users.length} users, ${candidates.length} candidates, ${opportunities.length} opportunities, ${applications.length} applications, ${questionBank.length} questions`);
 }
@@ -516,7 +517,11 @@ async function ensureSuperAdminAccount() {
   if (!DEFAULT_SUPERADMIN.password) {
     return;
   }
-  const existingAdmin = users.find(u => u.userType === 'superadmin');
+  const existingAdmin = users.find(u =>
+    u.userType === 'superadmin' ||
+    (u.email && u.email.toLowerCase() === DEFAULT_SUPERADMIN.email) ||
+    (u.username && u.username.toLowerCase() === DEFAULT_SUPERADMIN.username)
+  );
   if (existingAdmin) {
     const emailChanged = existingAdmin.email !== DEFAULT_SUPERADMIN.email;
     const usernameChanged = existingAdmin.username !== DEFAULT_SUPERADMIN.username;
@@ -525,11 +530,13 @@ async function ensureSuperAdminAccount() {
       passwordValid = await bcrypt.compare(DEFAULT_SUPERADMIN.password, existingAdmin.password);
     } catch (_) {}
 
-    if (emailChanged || usernameChanged || !passwordValid) {
+    if (emailChanged || usernameChanged || !passwordValid || existingAdmin.userType !== 'superadmin') {
       existingAdmin.name = DEFAULT_SUPERADMIN.name;
       existingAdmin.username = DEFAULT_SUPERADMIN.username;
       existingAdmin.email = DEFAULT_SUPERADMIN.email;
       existingAdmin.password = await bcrypt.hash(DEFAULT_SUPERADMIN.password, 10);
+      existingAdmin.userType = 'superadmin';
+      existingAdmin.canAccessPlatform = true;
       existingAdmin.updatedAt = new Date().toISOString();
       await saveUsers();
       console.log(`🔐 Updated superadmin account: ${DEFAULT_SUPERADMIN.email} (${DEFAULT_SUPERADMIN.username})`);
@@ -546,12 +553,56 @@ async function ensureSuperAdminAccount() {
     email: DEFAULT_SUPERADMIN.email,
     password: hashedPassword,
     userType: 'superadmin',
+    canAccessPlatform: true,
     company: 'TalentAI',
     createdAt: new Date().toISOString()
   });
 
   await saveUsers();
   console.log(`🔐 Seeded superadmin account: ${DEFAULT_SUPERADMIN.email} (${DEFAULT_SUPERADMIN.username})`);
+}
+
+async function ensureDemoAccounts() {
+  const demoAccounts = [
+    {
+      name: 'Anup Mazumdar (Student Demo)',
+      email: 'student@talentai.edu',
+      password: process.env.DEMO_STUDENT_PASSWORD || 'Password@123',
+      userType: 'candidate',
+      company: null
+    },
+    {
+      name: 'Sarah Jenkins (Recruiter Demo)',
+      email: 'recruiter@techcorp.com',
+      password: process.env.DEMO_RECRUITER_PASSWORD || 'Password@123',
+      userType: 'recruiter',
+      company: 'TechCorp Innovations'
+    }
+  ];
+
+  let usersChanged = false;
+  for (const demo of demoAccounts) {
+    const existing = users.find(u => u.email && u.email.toLowerCase() === demo.email.toLowerCase());
+    if (!existing) {
+      const hashedPassword = await bcrypt.hash(demo.password, 10);
+      users.push({
+        id: userId++,
+        name: demo.name,
+        email: demo.email.toLowerCase(),
+        password: hashedPassword,
+        userType: demo.userType,
+        canAccessPlatform: true,
+        company: demo.company,
+        createdAt: new Date().toISOString()
+      });
+      usersChanged = true;
+      console.log(`🌱 Seeded demo ${demo.userType} account: ${demo.email}`);
+    }
+  }
+
+  if (usersChanged) {
+    await saveUsers();
+  }
 }
 
 // Auto-save functions
@@ -6016,7 +6067,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     aiProvider,
     openRouter: !!process.env.OPENROUTER_API_KEY,
-    cloudStorage: useGCS
+    cloudStorage: useGCS,
+    userCount: users.length,
+    superadminReady: users.some(u => u.userType === 'superadmin')
   });
 });
 
