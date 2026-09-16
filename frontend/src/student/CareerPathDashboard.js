@@ -69,7 +69,8 @@ export function CareerPathDashboard() {
     offer: applications.filter(a => a.status === 'selected').length
   };
 
-  const completeness = profile?.completeness_score || 0;
+  const completeness = profile?.profile_completeness || profile?.completeness_report?.percentage || profile?.completeness_score || 0;
+  const missingItems = profile?.completeness_report?.missing || [];
 
   if (loading) {
     return (
@@ -88,7 +89,7 @@ export function CareerPathDashboard() {
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700">
               <Sparkles size={13} className="text-indigo-600" />
-              MCA Placement Command Center
+              CareerCompass Student Command Center
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
               Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}! 👋
@@ -127,7 +128,7 @@ export function CareerPathDashboard() {
             <div>
               <p className="text-xs font-bold text-slate-800">Profile Completeness</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                {completeness >= 85 ? '🌟 Placement ready' : 'Add skills or projects to reach 100%'}
+                {completeness >= 85 ? '🌟 Placement ready' : 'Complete profile to maximize matching'}
               </p>
               <Link to="/profile" className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 mt-1 inline-block">
                 Edit Profile →
@@ -135,6 +136,29 @@ export function CareerPathDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Missing Profile Items Banner (if under 100%) */}
+        {completeness < 100 && missingItems.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold text-sm">
+                !
+              </span>
+              <div>
+                <p className="text-xs font-bold text-amber-900">Boost Your Profile to 100%</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  Missing: {missingItems.slice(0, 2).join(' • ')}{missingItems.length > 2 ? ` (+${missingItems.length - 2} more)` : ''}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/profile"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0 transition"
+            >
+              Complete Now →
+            </Link>
+          </div>
+        )}
 
         {/* 4 KPI Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

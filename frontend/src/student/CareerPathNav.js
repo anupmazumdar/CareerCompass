@@ -63,7 +63,7 @@ export function CareerPathNav() {
               </div>
               <div>
                 <span className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-1">
-                  Career<span className="text-indigo-600">Path</span>
+                  Career<span className="text-indigo-600">Compass</span>
                   <span className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 rounded-md">
                     Student
                   </span>

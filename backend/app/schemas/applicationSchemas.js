@@ -3,10 +3,28 @@
 const { z } = require('zod');
 
 const createApplicationSchema = z.object({
-  jobId: z.coerce.number().int().positive('Valid jobId is required'),
+  opportunityId: z.coerce.number().int().positive().optional().nullable(),
+  jobId: z.coerce.number().int().positive().optional().nullable(),
+  company: z.string().max(200).optional().nullable(),
+  title: z.string().max(200).optional().nullable(),
+  location: z.string().max(200).optional().nullable(),
   resumeId: z.coerce.number().int().positive().optional().nullable(),
   coverNote: z.string().max(2000, 'Cover note cannot exceed 2000 characters').optional().nullable(),
-  status: z.enum(['saved', 'applied']).default('applied')
+  notes: z.string().max(2000).optional().nullable(),
+  reminderDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional().nullable(),
+  status: z.enum([
+    'saved',
+    'applied',
+    'under_review',
+    'shortlisted',
+    'interview',
+    'selected',
+    'offer',
+    'rejected',
+    'withdrawn'
+  ]).default('applied')
+}).refine(data => data.opportunityId || data.jobId || (data.company && data.title), {
+  message: 'Either opportunityId, jobId, or both company and title are required'
 });
 
 const updateStatusSchema = z.object({
@@ -17,10 +35,12 @@ const updateStatusSchema = z.object({
     'shortlisted',
     'interview',
     'selected',
+    'offer',
     'rejected',
     'withdrawn'
   ]),
-  notes: z.string().max(1000).optional().nullable()
+  notes: z.string().max(2000).optional().nullable(),
+  reminderDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional().nullable()
 });
 
 const addNoteSchema = z.object({

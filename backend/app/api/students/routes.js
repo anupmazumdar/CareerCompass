@@ -11,7 +11,9 @@ const {
   educationSchema,
   projectSchema,
   certificationSchema,
-  skillSchema
+  skillSchema,
+  resumeSchema,
+  goalSchema
 } = require('../../schemas/studentSchemas');
 
 // Helper to get authenticated student's profile ID
@@ -169,6 +171,127 @@ router.delete(['/me/skills/:id', '/skills/:id'], authenticateToken, requireRole(
     await studentRepo.removeSkill(studentId, req.params.id);
     const fullProfile = await studentRepo.getFullProfile(studentId);
     return res.json({ success: true, data: fullProfile, message: 'Skill removed from profile' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/students/me/completeness
+router.get('/me/completeness', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    if (!studentId) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Student profile not found' });
+    }
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({
+      success: true,
+      data: fullProfile.completeness_report || {
+        percentage: fullProfile.profile_completeness || 0,
+        checklist: [],
+        missing: []
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/students/me/resumes
+router.get('/me/resumes', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    const resumes = await studentRepo.getResumes(studentId);
+    return res.json({ success: true, data: resumes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/students/me/resumes
+router.post('/me/resumes', authenticateToken, requireRole('student'), validate(resumeSchema), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    // Check resume limit (max 3 resumes per student)
+    const existing = await studentRepo.getResumes(studentId);
+    if (existing.length >= 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'LIMIT_REACHED',
+        message: 'Maximum 3 resume versions allowed. Delete an existing version to upload a new one.'
+      });
+    }
+    const created = await studentRepo.addResume(studentId, req.body);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.status(201).json({ success: true, data: created, profile: fullProfile, message: 'Resume version saved' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/students/me/resumes/:id/primary
+router.put('/me/resumes/:id/primary', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    await studentRepo.setDefaultResume(studentId, req.params.id);
+    const resumes = await studentRepo.getResumes(studentId);
+    return res.json({ success: true, data: resumes, message: 'Primary resume updated' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/students/me/resumes/:id
+router.delete('/me/resumes/:id', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    await studentRepo.deleteResume(studentId, req.params.id);
+    const fullProfile = await studentRepo.getFullProfile(studentId);
+    return res.json({ success: true, data: fullProfile.resumes, profile: fullProfile, message: 'Resume deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/students/me/goals
+router.get('/me/goals', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    const goals = await studentRepo.getGoals(studentId);
+    return res.json({ success: true, data: goals });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/students/me/goals
+router.post('/me/goals', authenticateToken, requireRole('student'), validate(goalSchema), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    const created = await studentRepo.addGoal(studentId, req.body);
+    return res.status(201).json({ success: true, data: created, message: 'Goal created successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/students/me/goals/:id
+router.put('/me/goals/:id', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    const updated = await studentRepo.updateGoal(studentId, req.params.id, req.body);
+    return res.json({ success: true, data: updated, message: 'Goal updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/students/me/goals/:id
+router.delete('/me/goals/:id', authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    await studentRepo.deleteGoal(studentId, req.params.id);
+    return res.json({ success: true, message: 'Goal removed successfully' });
   } catch (err) {
     next(err);
   }

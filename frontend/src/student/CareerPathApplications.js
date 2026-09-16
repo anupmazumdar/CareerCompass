@@ -1,94 +1,74 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Briefcase,
-  Building2,
   Clock,
   CheckCircle2,
   AlertCircle,
   Search,
   Columns,
   List,
-  ChevronRight,
   MessageSquare,
   Trash2,
   Plus,
-  Sparkles,
   MapPin,
   Bookmark,
-  X
+  X,
+  Calendar,
+  Activity,
+  Award,
+  Bell
 } from 'lucide-react';
 import { api } from '../api/client';
 
-const PIPELINE_COLUMNS = [
-  {
-    id: 'saved',
-    title: 'Saved / Wishlist',
-    icon: Bookmark,
-    statuses: ['saved'],
-    color: 'sky',
-    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200'
-  },
-  {
-    id: 'applied',
-    title: 'Applied',
-    icon: CheckCircle2,
-    statuses: ['applied'],
-    color: 'indigo',
-    badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200'
-  },
-  {
-    id: 'under_review',
-    title: 'In Review / Screening',
-    icon: Clock,
-    statuses: ['under_review', 'shortlisted'],
-    color: 'amber',
-    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200'
-  },
-  {
-    id: 'interview',
-    title: 'Interview Scheduled',
-    icon: MessageSquare,
-    statuses: ['interview'],
-    color: 'purple',
-    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200'
-  },
-  {
-    id: 'decision',
-    title: 'Decisions',
-    icon: Sparkles,
-    statuses: ['selected', 'rejected', 'withdrawn'],
-    color: 'emerald',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
-  }
+const STAGES = [
+  { id: 'saved', label: 'Saved / Wishlist', color: 'sky', bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700', icon: Bookmark },
+  { id: 'applied', label: 'Applied', color: 'indigo', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', icon: CheckCircle2 },
+  { id: 'under_review', label: 'Under Review', color: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', icon: Clock },
+  { id: 'interview', label: 'Interview Scheduled', color: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', icon: MessageSquare },
+  { id: 'offer', label: 'Offer Received', color: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: Award },
+  { id: 'rejected', label: 'Closed / Rejected', color: 'slate', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-700', icon: X }
 ];
 
 export function CareerPathApplications() {
   const [applications, setApplications] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    saved: 0,
+    applied: 0,
+    under_review: 0,
+    interview: 0,
+    offer: 0,
+    rejected: 0,
+    active: 0,
+    response_rate: 0,
+    upcoming_reminders: []
+  });
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list'
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list' | 'timeline'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Detail Modal State
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activeDetailTab, setActiveDetailTab] = useState('timeline'); // 'timeline' | 'notes' | 'match'
+  const [activeDetailTab, setActiveDetailTab] = useState('timeline'); // 'timeline' | 'notes' | 'info'
+
+  // Quick-Add Application State
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddData, setQuickAddData] = useState({
+    company: '',
+    title: '',
+    location: '',
+    status: 'applied',
+    notes: '',
+    reminderDate: ''
+  });
+  const [submittingQuickAdd, setSubmittingQuickAdd] = useState(false);
 
   // Add Note State
   const [noteContent, setNoteContent] = useState('');
   const [noteType, setNoteType] = useState('general');
   const [noteReminderDate, setNoteReminderDate] = useState('');
   const [submittingNote, setSubmittingNote] = useState(false);
-
-  // Apply from Saved State
-  const [applyModalApp, setApplyModalApp] = useState(null);
-  const [applyCoverNote, setApplyCoverNote] = useState('');
-  const [submittingApply, setSubmittingApply] = useState(false);
-
-  // Withdraw Modal State
-  const [withdrawModalApp, setWithdrawModalApp] = useState(null);
-  const [withdrawReason, setWithdrawReason] = useState('');
-  const [submittingWithdraw, setSubmittingWithdraw] = useState(false);
 
   // Toast Notification
   const [toast, setToast] = useState(null);
@@ -98,45 +78,113 @@ export function CareerPathApplications() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Fetch applications list
-  const fetchApplications = useCallback(async () => {
+  // 1. Fetch Applications and Analytics Stats
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/applications/my-applications');
-      if (res.data && res.data.success) {
-        setApplications(res.data.data || []);
+      const [appsRes, statsRes] = await Promise.all([
+        api.get('/api/applications/my-applications'),
+        api.get('/api/applications/stats').catch(() => ({ data: { data: null } }))
+      ]);
+
+      if (appsRes.data && appsRes.data.success) {
+        setApplications(appsRes.data.data || []);
+      }
+      if (statsRes.data && statsRes.data.success && statsRes.data.data) {
+        setStats(statsRes.data.data);
       }
     } catch (err) {
       console.error('Failed to load applications:', err);
-      showNotification('Failed to fetch applications', 'error');
+      showNotification('Failed to load application tracker', 'error');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
+    fetchData();
+  }, [fetchData]);
 
-  // Open detail modal with full history, notes, and match breakdown
-  const openDetailModal = async (app) => {
+  // 2. Open Application Detail Drawer
+  const handleOpenDetail = async (appId) => {
     try {
       setDetailLoading(true);
-      setSelectedApplication(app);
-      setActiveDetailTab('timeline');
-      const res = await api.get(`/api/applications/${app.id}`);
+      setSelectedApplication(null);
+      const res = await api.get(`/api/applications/${appId}`);
       if (res.data && res.data.success) {
         setSelectedApplication(res.data.data);
       }
     } catch (err) {
-      console.error('Failed to load application details:', err);
-      showNotification('Failed to load full timeline and notes', 'error');
+      showNotification('Failed to load application details', 'error');
     } finally {
       setDetailLoading(false);
     }
   };
 
-  // Add Note to current application
+  // 3. Move Stage (Kanban Movement)
+  const handleMoveStage = async (appId, newStatus) => {
+    // Optimistic Update
+    setApplications(prev =>
+      prev.map(a => (a.id === appId ? { ...a, status: newStatus } : a))
+    );
+
+    try {
+      await api.patch(`/api/applications/${appId}/status`, {
+        status: newStatus,
+        notes: `Moved to ${newStatus} via student Kanban tracker`
+      });
+      showNotification(`Application moved to ${newStatus.replace('_', ' ')}`);
+      // Refresh stats
+      api.get('/api/applications/stats').then(res => {
+        if (res.data && res.data.data) setStats(res.data.data);
+      });
+    } catch (err) {
+      fetchData(); // revert
+      showNotification('Failed to update application stage', 'error');
+    }
+  };
+
+  // 4. Quick-Add Custom External Application
+  const handleQuickAddSubmit = async (e) => {
+    e.preventDefault();
+    if (!quickAddData.company || !quickAddData.title) {
+      showNotification('Company and Role Title are required', 'error');
+      return;
+    }
+
+    try {
+      setSubmittingQuickAdd(true);
+      const res = await api.post('/api/applications', {
+        company: quickAddData.company,
+        title: quickAddData.title,
+        location: quickAddData.location || 'Remote / Flexible',
+        status: quickAddData.status,
+        notes: quickAddData.notes || null,
+        reminderDate: quickAddData.reminderDate || null
+      });
+
+      if (res.data && res.data.success) {
+        showNotification(`Tracked application for ${quickAddData.title} at ${quickAddData.company}!`);
+        setIsQuickAddOpen(false);
+        setQuickAddData({
+          company: '',
+          title: '',
+          location: '',
+          status: 'applied',
+          notes: '',
+          reminderDate: ''
+        });
+        fetchData();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to track application';
+      showNotification(msg, 'error');
+    } finally {
+      setSubmittingQuickAdd(false);
+    }
+  };
+
+  // 5. Add Note to Application
   const handleAddNote = async (e) => {
     e.preventDefault();
     if (!noteContent.trim() || !selectedApplication) return;
@@ -144,946 +192,752 @@ export function CareerPathApplications() {
     try {
       setSubmittingNote(true);
       const res = await api.post(`/api/applications/${selectedApplication.id}/notes`, {
-        content: noteContent.trim(),
+        content: noteContent,
         noteType,
         reminderDate: noteReminderDate || null
       });
 
       if (res.data && res.data.success) {
-        showNotification('Private note added successfully');
+        showNotification('Note added successfully!');
         setNoteContent('');
         setNoteReminderDate('');
-
-        // Refresh notes list in modal
-        setSelectedApplication(prev => ({
-          ...prev,
-          notes: [res.data.data, ...(prev.notes || [])],
-          notes_count: (Number(prev.notes_count) || 0) + 1
-        }));
-
-        // Refresh main list notes count
-        setApplications(prev =>
-          prev.map(item =>
-            item.id === selectedApplication.id
-              ? { ...item, notes_count: (Number(item.notes_count) || 0) + 1 }
-              : item
-          )
-        );
+        // Refresh selected application detail
+        handleOpenDetail(selectedApplication.id);
+        fetchData();
       }
     } catch (err) {
-      console.error('Failed to add note:', err);
-      showNotification(err.message || 'Failed to save note', 'error');
+      showNotification('Failed to add note', 'error');
     } finally {
       setSubmittingNote(false);
     }
   };
 
-  // Delete Note
+  // 6. Delete Note
   const handleDeleteNote = async (noteId) => {
     if (!selectedApplication) return;
     try {
       await api.delete(`/api/applications/${selectedApplication.id}/notes/${noteId}`);
       showNotification('Note deleted');
-      setSelectedApplication(prev => ({
-        ...prev,
-        notes: prev.notes.filter(n => n.id !== noteId),
-        notes_count: Math.max(0, (Number(prev.notes_count) || 1) - 1)
-      }));
-      setApplications(prev =>
-        prev.map(item =>
-          item.id === selectedApplication.id
-            ? { ...item, notes_count: Math.max(0, (Number(item.notes_count) || 1) - 1) }
-            : item
-        )
-      );
+      handleOpenDetail(selectedApplication.id);
     } catch (err) {
-      console.error('Failed to delete note:', err);
       showNotification('Failed to delete note', 'error');
     }
   };
 
-  // Submit Application from Saved
-  const handlePromoteToApplied = async () => {
-    if (!applyModalApp) return;
-    try {
-      setSubmittingApply(true);
-      const res = await api.post('/api/applications', {
-        jobId: applyModalApp.job_id,
-        status: 'applied',
-        coverNote: applyCoverNote.trim() || null
-      });
-
-      if (res.data && res.data.success) {
-        showNotification('Application submitted successfully! Tracking started.');
-        setApplyModalApp(null);
-        setApplyCoverNote('');
-        if (selectedApplication?.id === applyModalApp.id) {
-          setSelectedApplication(null);
-        }
-        await fetchApplications();
-      }
-    } catch (err) {
-      console.error('Failed to submit application:', err);
-      showNotification(err.message || 'Failed to submit application', 'error');
-    } finally {
-      setSubmittingApply(false);
-    }
-  };
-
-  // Withdraw Application
-  const handleWithdraw = async () => {
-    if (!withdrawModalApp) return;
-    try {
-      setSubmittingWithdraw(true);
-      const res = await api.patch(`/api/applications/${withdrawModalApp.id}/status`, {
-        status: 'withdrawn',
-        notes: withdrawReason.trim() || 'Withdrawn by student'
-      });
-
-      if (res.data && res.data.success) {
-        showNotification('Application withdrawn');
-        setWithdrawModalApp(null);
-        setWithdrawReason('');
-        if (selectedApplication?.id === withdrawModalApp.id) {
-          setSelectedApplication(null);
-        }
-        await fetchApplications();
-      }
-    } catch (err) {
-      console.error('Failed to withdraw application:', err);
-      showNotification(err.message || 'Failed to withdraw', 'error');
-    } finally {
-      setSubmittingWithdraw(false);
-    }
-  };
-
-  // Remove from saved wishlist
-  const handleRemoveSaved = async (appId, e) => {
-    if (e) e.stopPropagation();
+  // 7. Withdraw / Remove Application
+  const handleWithdrawApplication = async (appId) => {
     try {
       await api.delete(`/api/applications/${appId}`);
-      showNotification('Removed from saved wishlist');
-      setApplications(prev => prev.filter(a => a.id !== appId));
-      if (selectedApplication?.id === appId) {
-        setSelectedApplication(null);
-      }
+      showNotification('Application updated / withdrawn');
+      if (selectedApplication?.id === appId) setSelectedApplication(null);
+      fetchData();
     } catch (err) {
-      console.error('Failed to remove saved opportunity:', err);
-      showNotification('Failed to remove from wishlist', 'error');
+      showNotification('Failed to withdraw application', 'error');
     }
   };
 
-  // Filtered applications
+  // Filtered Applications for Search
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
       const matchSearch =
         !searchQuery ||
-        app.job_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.job_location?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchStatus =
-        statusFilter === 'all' ||
-        app.status?.toLowerCase() === statusFilter.toLowerCase();
-
+        (app.job_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (app.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus = statusFilter === 'all' || app.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [applications, searchQuery, statusFilter]);
 
-  // Metric counters
-  const metrics = useMemo(() => {
-    const total = applications.length;
-    const active = applications.filter(a => ['applied', 'under_review', 'shortlisted', 'interview'].includes(a.status)).length;
-    const interviews = applications.filter(a => a.status === 'interview').length;
-    const offers = applications.filter(a => a.status === 'selected').length;
-    return { total, active, interviews, offers };
-  }, [applications]);
+  // Group applications by stage for Kanban
+  const kanbanColumns = useMemo(() => {
+    const map = {
+      saved: [],
+      applied: [],
+      under_review: [],
+      interview: [],
+      offer: [],
+      rejected: []
+    };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'saved':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-700 border border-sky-200">📌 Saved</span>;
-      case 'applied':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200">📤 Applied</span>;
-      case 'under_review':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">🔍 In Review</span>;
-      case 'shortlisted':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-700 border border-teal-200">⭐ Shortlisted</span>;
-      case 'interview':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200">🎙️ Interview</span>;
-      case 'selected':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">🏆 Offer / Selected</span>;
-      case 'rejected':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200">❌ Not Selected</span>;
-      case 'withdrawn':
-        return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">⏸️ Withdrawn</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">{status}</span>;
-    }
-  };
+    filteredApplications.forEach(app => {
+      if (map[app.status]) {
+        map[app.status].push(app);
+      } else if (app.status === 'screening' || app.status === 'shortlisted') {
+        map.under_review.push(app);
+      } else if (app.status === 'selected') {
+        map.offer.push(app);
+      } else if (app.status === 'withdrawn') {
+        map.rejected.push(app);
+      } else {
+        map.applied.push(app);
+      }
+    });
+
+    return map;
+  }, [filteredApplications]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16 font-sans">
       {/* Toast Notification */}
       {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg border text-sm font-medium transition-all ${
-            toast.type === 'error'
-              ? 'bg-rose-50 border-rose-200 text-rose-800'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          }`}
-        >
+        <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 rounded-2xl px-4 py-3 shadow-lg text-sm font-bold border transition-all ${
+          toast.type === 'error' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        }`}>
           {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-          <span>{toast.message}</span>
+          {toast.message}
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-semibold text-indigo-700 mb-2">
-              <Sparkles size={13} className="text-indigo-600" />
-              CareerPath Pipeline Manager
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-              Application Tracker
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Track your student job applications end-to-end with immutable stage logs and private notes.
-            </p>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-xs">
-              <p className="text-xl font-bold text-slate-900">{metrics.total}</p>
-              <p className="text-xs text-slate-500 font-medium">Total Tracked</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-xs">
-              <p className="text-xl font-bold text-indigo-600">{metrics.active}</p>
-              <p className="text-xs text-slate-500 font-medium">In Pipeline</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-xs">
-              <p className="text-xl font-bold text-purple-600">{metrics.interviews}</p>
-              <p className="text-xs text-slate-500 font-medium">Interviews</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-xs">
-              <p className="text-xl font-bold text-emerald-600">{metrics.offers}</p>
-              <p className="text-xs text-slate-500 font-medium">Offers</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Toolbar: Search, Filters, View Switcher */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-              <input
-                type="text"
-                placeholder="Filter by company, role, or location..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
-              />
+      {/* Hero Header & Analytics KPI Strip */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 sm:p-8 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider mb-1">
+                <Activity size={15} />
+                <span>Placement Pipeline & Kanban Tracker</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Application Tracker
+              </h1>
+              <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+                Manage your campus and off-campus recruitment pipeline from Wishlist to Offer with full stage audit logs, interview reminders, and notes.
+              </p>
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              aria-label="Filter applications by status"
-              className="px-3 py-2 text-sm bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-700 font-medium"
+            <button
+              onClick={() => setIsQuickAddOpen(true)}
+              className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold shadow-xs flex items-center gap-1.5 transition self-start md:self-center"
             >
-              <option value="all">All Stages</option>
-              <option value="saved">📌 Saved</option>
-              <option value="applied">📤 Applied</option>
-              <option value="under_review">🔍 In Review</option>
-              <option value="shortlisted">⭐ Shortlisted</option>
-              <option value="interview">🎙️ Interview</option>
-              <option value="selected">🏆 Selected / Offer</option>
-              <option value="rejected">❌ Rejected</option>
-              <option value="withdrawn">⏸️ Withdrawn</option>
-            </select>
+              <Plus size={16} /> Track External Application
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-auto">
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
+          {/* Application Analytics Strip */}
+          <div className="mt-6 pt-6 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Tracked</p>
+              <p className="text-xl font-extrabold text-slate-900 mt-0.5">{stats.total || 0}</p>
+            </div>
+            <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 text-center">
+              <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Applied</p>
+              <p className="text-xl font-extrabold text-indigo-700 mt-0.5">{stats.applied || 0}</p>
+            </div>
+            <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-100 text-center">
+              <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">In Review</p>
+              <p className="text-xl font-extrabold text-amber-700 mt-0.5">{stats.under_review || 0}</p>
+            </div>
+            <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 text-center">
+              <p className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Interviews</p>
+              <p className="text-xl font-extrabold text-purple-700 mt-0.5">{stats.interview || 0}</p>
+            </div>
+            <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-100 text-center">
+              <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Offers</p>
+              <p className="text-xl font-extrabold text-emerald-700 mt-0.5">{stats.offer || 0}</p>
+            </div>
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Active Rate</p>
+              <p className="text-xl font-extrabold text-indigo-600 mt-0.5">{stats.response_rate || 0}%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Reminders Alert (if any) */}
+        {stats.upcoming_reminders && stats.upcoming_reminders.length > 0 && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+            <Bell size={18} className="text-amber-600 mt-0.5 shrink-0" />
+            <div className="text-xs">
+              <p className="font-extrabold text-amber-900">Upcoming Interview & Task Reminders</p>
+              <div className="flex flex-wrap gap-3 mt-1.5">
+                {stats.upcoming_reminders.map(r => (
+                  <span key={r.id} className="bg-white/80 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-800 font-bold flex items-center gap-1.5">
+                    <Calendar size={12} />
+                    {r.company} ({r.title}): {new Date(r.reminder_date).toLocaleDateString()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Controls Row: Search & View Switcher (Kanban, List, Timeline) */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+          <div className="relative w-full sm:w-80">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by company or role..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* View Mode Switcher */}
+            <div className="bg-white border border-slate-200 rounded-xl p-1 flex items-center gap-1 shadow-2xs">
               <button
-                type="button"
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  viewMode === 'kanban'
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1 transition ${
+                  viewMode === 'kanban' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Columns size={15} />
-                Kanban
+                <Columns size={13} /> Kanban
               </button>
               <button
-                type="button"
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  viewMode === 'list'
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1 transition ${
+                  viewMode === 'list' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <List size={15} />
-                List View
+                <List size={13} /> List
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1 transition ${
+                  viewMode === 'timeline' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Clock size={13} /> Timeline
               </button>
             </div>
           </div>
         </div>
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-2xl">
-            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <p className="mt-4 text-sm font-medium text-slate-500">Loading your applications pipeline...</p>
-          </div>
-        ) : applications.length === 0 ? (
-          /* Empty Pipeline State */
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-xl mx-auto shadow-xs">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600 mb-4">
-              <Briefcase size={28} />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">Your application pipeline is empty</h3>
-            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-              You haven't saved or applied to any jobs yet. Discover top campus roles with automated match analysis!
-            </p>
-            <div className="mt-6 flex items-center justify-center gap-3">
-              <a
-                href="/opportunities"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 shadow-xs transition"
+        {/* Status Filter for List View */}
+        {viewMode === 'list' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4">
+            {[{ id: 'all', label: 'All Stages' }, ...STAGES].map(st => (
+              <button
+                key={st.id}
+                onClick={() => setStatusFilter(st.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  statusFilter === st.id ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
               >
-                <Sparkles size={16} />
-                Explore Opportunities
-              </a>
+                {st.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex h-72 items-center justify-center bg-white rounded-3xl border border-slate-200">
+            <div className="text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent mx-auto mb-3" />
+              <p className="text-xs font-bold text-slate-500">Loading your recruitment pipeline...</p>
             </div>
           </div>
-        ) : viewMode === 'kanban' ? (
-          /* ==================== KANBAN BOARD VIEW ==================== */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
-            {PIPELINE_COLUMNS.map(col => {
-              const colApps = filteredApplications.filter(app => col.statuses.includes(app.status));
-              const ColIcon = col.icon;
+        ) : (
+          <>
+            {/* 1. KANBAN BOARD VIEW */}
+        {viewMode === 'kanban' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 overflow-x-auto pb-4">
+            {STAGES.map(stage => {
+              const StageIcon = stage.icon;
+              const cards = kanbanColumns[stage.id] || [];
 
               return (
-                <div key={col.id} className="bg-slate-100/70 border border-slate-200/80 rounded-2xl p-3 space-y-3 flex flex-col min-h-[480px]">
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between px-1.5 pt-1">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-lg ${col.badgeClass}`}>
-                        <ColIcon size={14} />
-                      </div>
-                      <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                        {col.title}
-                      </h2>
+                <div
+                  key={stage.id}
+                  className="bg-slate-100/70 rounded-3xl p-3.5 border border-slate-200/80 min-w-[260px] flex flex-col h-full"
+                >
+                  {/* Stage Header */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`p-1 rounded-lg ${stage.bg} ${stage.text}`}>
+                        <StageIcon size={14} />
+                      </span>
+                      <h3 className="text-xs font-extrabold text-slate-800">{stage.label}</h3>
                     </div>
-                    <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-white border border-slate-200 text-slate-600 shadow-2xs">
-                      {colApps.length}
+                    <span className="text-[11px] font-extrabold bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-600">
+                      {cards.length}
                     </span>
                   </div>
 
                   {/* Cards List */}
-                  <div className="space-y-2.5 flex-1">
-                    {colApps.length === 0 ? (
-                      <div className="border border-dashed border-slate-300/80 rounded-xl p-4 text-center text-xs text-slate-400">
-                        No applications in this stage
+                  <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] pr-1">
+                    {cards.length === 0 ? (
+                      <div className="text-center py-8 rounded-2xl border border-dashed border-slate-300 text-[11px] text-slate-400 font-semibold">
+                        No applications in {stage.label}
                       </div>
                     ) : (
-                      colApps.map(app => (
-                        <div
-                          key={app.id}
-                          onClick={() => openDetailModal(app)}
-                          className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group space-y-2.5"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition truncate">
-                                {app.job_title}
-                              </h3>
-                              <p className="text-xs font-medium text-slate-500 truncate flex items-center gap-1 mt-0.5">
-                                <Building2 size={12} className="text-slate-400" />
-                                {app.company_name}
-                              </p>
-                            </div>
+                      cards.map(card => {
+                        const matchScore = card.match_score !== null && card.match_score !== undefined ? Math.round(card.match_score) : null;
 
-                            {app.match_score !== null && app.match_score !== undefined && (
-                              <span
-                                className={`text-[11px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
-                                  app.match_score >= 75
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                    : app.match_score >= 50
-                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                                }`}
-                              >
-                                {Math.round(app.match_score)}% fit
+                        return (
+                          <div
+                            key={card.id}
+                            className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:shadow-md transition cursor-pointer"
+                            onClick={() => handleOpenDetail(card.id)}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                              <span className="text-[11px] font-extrabold text-indigo-600 uppercase tracking-wide truncate">
+                                {card.company_name}
                               </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <span className="flex items-center gap-1 truncate">
-                              <MapPin size={11} /> {app.job_location}
-                            </span>
-                            <span>•</span>
-                            <span className="capitalize">{app.employment_type || 'Full-time'}</span>
-                          </div>
-
-                          {/* Footer Info & Quick Actions */}
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <Clock size={11} />
-                              {new Date(app.applied_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                              {Number(app.notes_count) > 0 && (
-                                <span className="flex items-center gap-1 text-slate-500 font-medium bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                                  <MessageSquare size={10} /> {app.notes_count}
+                              {matchScore !== null && (
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                  {matchScore}%
                                 </span>
                               )}
+                            </div>
 
-                              {app.status === 'saved' && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setApplyModalApp(app);
-                                  }}
-                                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded transition"
-                                >
-                                  Apply Now
-                                </button>
+                            <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug mb-2">
+                              {card.job_title}
+                            </h4>
+
+                            {/* Location & Resume Version */}
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 mb-3">
+                              <span className="flex items-center gap-1">
+                                <MapPin size={11} className="text-slate-400" />
+                                {card.job_location || 'Flexible'}
+                              </span>
+                              {card.resume_version_label && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">
+                                  📄 {card.resume_version_label}
+                                </span>
                               )}
                             </div>
+
+                            {/* Reminder Badge */}
+                            {card.reminder_date && (
+                              <div className="p-1.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-bold mb-3 flex items-center gap-1">
+                                <Calendar size={11} />
+                                {new Date(card.reminder_date).toLocaleDateString()}
+                              </div>
+                            )}
+
+                            {/* Stage Mover Selector */}
+                            <div
+                              className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 text-[10px]"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <span className="text-slate-400 font-bold">Move:</span>
+                              <select
+                                value={stage.id}
+                                onChange={e => handleMoveStage(card.id, e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-700 text-[10px] focus:outline-none"
+                              >
+                                {STAGES.map(s => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          /* ==================== LIST / TABLE VIEW ==================== */
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+        )}
+
+        {/* 2. LIST VIEW */}
+        {viewMode === 'list' && (
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600">
-                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  <tr>
-                    <th className="px-6 py-3.5">Opportunity</th>
-                    <th className="px-6 py-3.5">Company</th>
-                    <th className="px-6 py-3.5">Match Fit</th>
-                    <th className="px-6 py-3.5">Status</th>
-                    <th className="px-6 py-3.5">Applied Date</th>
-                    <th className="px-6 py-3.5">Notes</th>
-                    <th className="px-6 py-3.5 text-right">Actions</th>
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-6">Company & Role</th>
+                    <th className="py-3.5 px-4">Stage</th>
+                    <th className="py-3.5 px-4">Match %</th>
+                    <th className="py-3.5 px-4">Applied Date</th>
+                    <th className="py-3.5 px-4">Resume Version</th>
+                    <th className="py-3.5 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200/80">
-                  {filteredApplications.map(app => (
-                    <tr
-                      key={app.id}
-                      onClick={() => openDetailModal(app)}
-                      className="hover:bg-slate-50/70 transition cursor-pointer group"
-                    >
-                      <td className="px-6 py-4 font-semibold text-slate-900 group-hover:text-indigo-600">
-                        {app.job_title}
-                        <div className="text-xs text-slate-400 font-normal mt-0.5">
-                          {app.job_location} • {app.employment_type}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-700">
-                        {app.company_name}
-                      </td>
-                      <td className="px-6 py-4">
-                        {app.match_score !== null && app.match_score !== undefined ? (
-                          <span
-                            className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-md border ${
-                              app.match_score >= 75
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : app.match_score >= 50
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}
-                          >
-                            {Math.round(app.match_score)}%
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(app.status)}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {new Date(app.applied_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {Number(app.notes_count) > 0 ? (
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                            <MessageSquare size={13} className="text-indigo-500" />
-                            {app.notes_count} note{Number(app.notes_count) > 1 ? 's' : ''}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">None</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                          {app.status === 'saved' ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setApplyModalApp(app)}
-                                className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition"
-                              >
-                                Apply
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => handleRemoveSaved(app.id, e)}
-                                title="Remove from wishlist"
-                                className="p-1 text-slate-400 hover:text-rose-600 transition"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => openDetailModal(app)}
-                              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                            >
-                              Details <ChevronRight size={14} />
-                            </button>
-                          )}
-                        </div>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredApplications.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-400 font-semibold">
+                        No applications match your criteria
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredApplications.map(app => {
+                      const stageObj = STAGES.find(s => s.id === app.status) || STAGES[1];
+                      return (
+                        <tr
+                          key={app.id}
+                          className="hover:bg-slate-50 transition cursor-pointer"
+                          onClick={() => handleOpenDetail(app.id)}
+                        >
+                          <td className="py-3.5 px-6">
+                            <p className="font-extrabold text-indigo-600 uppercase text-[10px]">{app.company_name}</p>
+                            <p className="font-bold text-slate-900 text-sm mt-0.5">{app.job_title}</p>
+                            <span className="text-slate-400 text-[11px]">{app.job_location}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full border text-[11px] font-bold ${stageObj.bg} ${stageObj.border} ${stageObj.text}`}>
+                              {stageObj.label}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {app.match_score !== null ? (
+                              <span className="font-bold text-slate-800">{Math.round(app.match_score)}%</span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-600">
+                            {new Date(app.applied_at || app.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-slate-700">
+                            {app.resume_version_label || 'v1-default'}
+                          </td>
+                          <td className="py-3.5 px-6 text-right" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => handleOpenDetail(app.id)}
+                              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-indigo-600 hover:bg-slate-50"
+                            >
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* ==================== DETAIL DRAWER / MODAL ==================== */}
-        {selectedApplication && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              {/* Modal Header */}
-              <div className="p-6 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    {getStatusBadge(selectedApplication.status)}
-                    {selectedApplication.match_score !== null && selectedApplication.match_score !== undefined && (
-                      <span className="text-xs font-bold text-slate-600">
-                        • {Math.round(selectedApplication.match_score)}% Profile Match
+        {/* 3. TIMELINE VIEW */}
+        {viewMode === 'timeline' && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+            <h3 className="text-base font-extrabold text-slate-900 mb-6 flex items-center gap-2">
+              <Clock size={18} className="text-indigo-600" />
+              Chronological Recruitment Activity Timeline
+            </h3>
+
+            <div className="relative border-l-2 border-slate-200 ml-4 space-y-6">
+              {filteredApplications.map(app => (
+                <div key={`tl-${app.id}`} className="relative pl-6">
+                  <span className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-indigo-600 ring-4 ring-white" />
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-extrabold text-indigo-600 uppercase">{app.company_name}</span>
+                      <span className="text-[11px] font-medium text-slate-400">
+                        {new Date(app.applied_at || app.created_at).toLocaleDateString()}
                       </span>
-                    )}
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900">{app.job_title}</h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Current Status: <span className="font-bold text-indigo-700 uppercase">{app.status}</span>
+                      {app.notes && ` • "${app.notes}"`}
+                    </p>
+                    <button
+                      onClick={() => handleOpenDetail(app.id)}
+                      className="text-xs font-bold text-indigo-600 hover:underline mt-2 inline-block"
+                    >
+                      View Full Details & Notes →
+                    </button>
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">
-                    {selectedApplication.job_title}
-                  </h2>
-                  <p className="text-sm text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
-                    <Building2 size={14} className="text-slate-400" />
-                    {selectedApplication.company_name}
-                    <span className="text-slate-300">•</span>
-                    <MapPin size={14} className="text-slate-400" />
-                    {selectedApplication.job_location}
-                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+          </>
+        )}
+      </div>
+
+      {/* Detail Drawer & Notes Modal */}
+      {(selectedApplication || detailLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 font-sans">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+            {detailLoading ? (
+              <div className="py-16 text-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent mx-auto mb-2" />
+                <p className="text-xs text-slate-500">Loading application details...</p>
+              </div>
+            ) : selectedApplication && (
+              <div>
+                {/* Header */}
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <span className="text-xs font-extrabold text-indigo-600 uppercase tracking-wider">
+                      {selectedApplication.company_name}
+                    </span>
+                    <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">{selectedApplication.job_title}</h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {selectedApplication.job_location} • Status: <span className="font-bold text-indigo-700 uppercase">{selectedApplication.status}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedApplication(null)}
+                    className="text-slate-400 hover:text-slate-700 p-2 rounded-lg text-sm font-bold"
+                  >
+                    ✕
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedApplication(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+                {/* Tabs */}
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-6">
+                  <button
+                    onClick={() => setActiveDetailTab('timeline')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      activeDetailTab === 'timeline' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Stage History ({selectedApplication.history?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setActiveDetailTab('notes')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      activeDetailTab === 'notes' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Private Notes & Reminders ({selectedApplication.notes?.length || 0})
+                  </button>
+                </div>
 
-              {/* Modal Nav Tabs */}
-              <div className="flex border-b border-slate-200 px-6 bg-white gap-6">
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('timeline')}
-                  className={`py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition ${
-                    activeDetailTab === 'timeline'
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Clock size={15} />
-                  Status Journey & Audit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('notes')}
-                  className={`py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition ${
-                    activeDetailTab === 'notes'
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <MessageSquare size={15} />
-                  Private Notes & Reminders ({selectedApplication.notes?.length || 0})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDetailTab('match')}
-                  className={`py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition ${
-                    activeDetailTab === 'match'
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Sparkles size={15} />
-                  Match Breakdown
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1">
-                {detailLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : activeDetailTab === 'timeline' ? (
-                  /* ==================== TAB 1: STATUS JOURNEY TIMELINE ==================== */
+                {/* Tab Content: Timeline */}
+                {activeDetailTab === 'timeline' && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-slate-900">Application Progression</h3>
-                      <span className="text-xs text-slate-400">Immutable audit log</span>
-                    </div>
-
-                    <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                      {(selectedApplication.history || []).map((step, idx) => (
-                        <div key={step.id || idx} className="relative group">
-                          <div className="absolute -left-6 top-1.5 w-5 h-5 rounded-full bg-white border-2 border-indigo-600 flex items-center justify-center shadow-xs">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                          </div>
-
-                          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                                {step.previous_status === 'none' ? 'Initiated' : `${step.previous_status} → ${step.new_status}`}
-                              </span>
-                              <span className="text-[11px] text-slate-400">
-                                {new Date(step.created_at).toLocaleString(undefined, {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
+                    <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">Audit History</h4>
+                    {selectedApplication.history && selectedApplication.history.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedApplication.history.map(item => (
+                          <div key={item.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                            <div className="flex items-center justify-between text-slate-500 text-[11px] mb-1">
+                              <span className="font-bold text-indigo-600 uppercase">{item.new_status}</span>
+                              <span>{new Date(item.created_at).toLocaleString()}</span>
                             </div>
-                            <p className="text-xs text-slate-600">
-                              {step.notes || `Status changed to ${step.new_status}`}
-                            </p>
-                            {step.changed_by_name && (
-                              <p className="text-[10px] text-slate-400 pt-1">
-                                Action recorded by: {step.changed_by_name} ({step.changed_by_role})
-                              </p>
-                            )}
+                            <p className="text-slate-700 font-medium">{item.notes || 'Status changed'}</p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {selectedApplication.cover_note && (
-                      <div className="mt-6 pt-4 border-t border-slate-200">
-                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Submitted Cover Note</h4>
-                        <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 italic border border-slate-200/60">
-                          "{selectedApplication.cover_note}"
-                        </div>
+                        ))}
                       </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">No stage history recorded yet.</p>
                     )}
                   </div>
-                ) : activeDetailTab === 'notes' ? (
-                  /* ==================== TAB 2: PRIVATE NOTES & REMINDERS ==================== */
-                  <div className="space-y-6">
-                    {/* Add Note Form */}
-                    <form onSubmit={handleAddNote} className="bg-slate-50/70 border border-slate-200 rounded-xl p-4 space-y-3">
-                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Add Private Note or Follow-Up</h4>
-                      <div>
-                        <textarea
-                          rows={2}
-                          required
-                          placeholder="e.g., Round 1 technical interview scheduled with lead engineer. Prepare concurrency and SQL questions."
-                          value={noteContent}
-                          onChange={e => setNoteContent(e.target.value)}
-                          className="w-full p-3 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
-                        />
-                      </div>
+                )}
 
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                {/* Tab Content: Notes & Reminders */}
+                {activeDetailTab === 'notes' && (
+                  <div>
+                    {/* Add Note Form */}
+                    <form onSubmit={handleAddNote} className="mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                      <h4 className="text-xs font-extrabold text-slate-900">Add Interview Prep / Application Note</h4>
+                      <textarea
+                        rows={3}
+                        placeholder="Write down round details, technical questions asked, follow-up dates..."
+                        value={noteContent}
+                        onChange={e => setNoteContent(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 mb-1">Note Type</label>
                           <select
                             value={noteType}
                             onChange={e => setNoteType(e.target.value)}
-                            aria-label="Select note category"
-                            className="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-hidden"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold"
                           >
-                            <option value="general">📝 General</option>
-                            <option value="interview_prep">💡 Interview Prep</option>
-                            <option value="follow_up">⏰ Follow Up</option>
-                            <option value="offer_details">🎉 Offer Details</option>
+                            <option value="general">General</option>
+                            <option value="interview_prep">Interview Prep</option>
+                            <option value="follow_up">Follow Up</option>
+                            <option value="offer_details">Offer Details</option>
                           </select>
-
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-500 mb-1">Reminder Date</label>
                           <input
-                            type="date"
+                            type="datetime-local"
                             value={noteReminderDate}
                             onChange={e => setNoteReminderDate(e.target.value)}
-                            title="Optional reminder date"
-                            className="text-xs bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-hidden"
+                            className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold"
                           />
                         </div>
+                      </div>
 
+                      <div className="text-right">
                         <button
                           type="submit"
                           disabled={submittingNote || !noteContent.trim()}
-                          className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition shadow-2xs"
+                          className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs"
                         >
-                          <Plus size={14} />
                           {submittingNote ? 'Saving...' : 'Save Note'}
                         </button>
                       </div>
                     </form>
 
-                    {/* Existing Notes List */}
+                    {/* Notes List */}
                     <div className="space-y-3">
-                      {(selectedApplication.notes || []).length === 0 ? (
-                        <p className="text-center text-xs text-slate-400 py-6">
-                          No private notes saved yet. Add your prep thoughts, questions, or follow-up dates above!
-                        </p>
-                      ) : (
+                      {selectedApplication.notes && selectedApplication.notes.length > 0 ? (
                         selectedApplication.notes.map(note => (
-                          <div key={note.id} className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 capitalize">
-                                {note.note_type.replace('_', ' ')}
+                          <div key={note.id} className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {note.note_type}
                               </span>
                               <div className="flex items-center gap-2">
-                                {note.reminder_date && (
-                                  <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
-                                    <Clock size={11} />
-                                    Reminder: {new Date(note.reminder_date).toLocaleDateString()}
-                                  </span>
-                                )}
+                                <span className="text-[10px] text-slate-400">{new Date(note.created_at).toLocaleDateString()}</span>
                                 <button
-                                  type="button"
                                   onClick={() => handleDeleteNote(note.id)}
-                                  className="text-slate-400 hover:text-rose-600 transition p-1"
+                                  className="text-slate-400 hover:text-rose-600"
                                 >
                                   <Trash2 size={13} />
                                 </button>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-700 leading-relaxed">
-                              {note.content}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              Added {new Date(note.created_at).toLocaleString()}
-                            </p>
+                            <p className="text-slate-700 font-medium whitespace-pre-line mt-1.5">{note.content}</p>
+                            {note.reminder_date && (
+                              <div className="mt-2 text-[10px] font-bold text-purple-700 flex items-center gap-1">
+                                <Calendar size={11} /> Reminder: {new Date(note.reminder_date).toLocaleString()}
+                              </div>
+                            )}
                           </div>
                         ))
+                      ) : (
+                        <p className="text-xs text-slate-400 text-center py-4">No notes added yet.</p>
                       )}
                     </div>
                   </div>
-                ) : (
-                  /* ==================== TAB 3: MATCH BREAKDOWN ==================== */
-                  <div className="space-y-4">
-                    {selectedApplication.matchScore ? (
-                      <>
-                        <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-indigo-900 uppercase">AI Weighted Match Evaluation</span>
-                            <span className="text-base font-extrabold text-indigo-700">
-                              {Math.round(selectedApplication.matchScore.final_score)}%
-                            </span>
-                          </div>
-                          <p className="text-xs text-indigo-800 leading-relaxed">
-                            {selectedApplication.matchScore.explanation}
-                          </p>
-                        </div>
-
-                        {/* Matched Skills */}
-                        <div>
-                          <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                            <CheckCircle2 size={14} className="text-emerald-600" />
-                            Skills You Match ({selectedApplication.matchScore.matched_skills?.length || 0})
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(selectedApplication.matchScore.matched_skills || []).map((sk, idx) => (
-                              <span key={idx} className="text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
-                                ✓ {sk}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Missing Skills */}
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                            <AlertCircle size={14} className="text-amber-500" />
-                            Areas for Growth ({selectedApplication.matchScore.missing_skills?.length || 0})
-                          </h4>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(selectedApplication.matchScore.missing_skills || []).map((sk, idx) => (
-                              <span key={idx} className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 font-medium">
-                                + {sk}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-8 text-xs text-slate-400">
-                        Detailed match breakdown is computed upon full application submission.
-                      </div>
-                    )}
-                  </div>
                 )}
-              </div>
 
-              {/* Modal Footer Actions */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
-                <div>
-                  {selectedApplication.status === 'saved' ? (
-                    <button
-                      type="button"
-                      onClick={() => setApplyModalApp(selectedApplication)}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-xs transition flex items-center gap-1.5"
-                    >
-                      <CheckCircle2 size={15} />
-                      Submit Application Now
-                    </button>
-                  ) : !['withdrawn', 'rejected', 'selected'].includes(selectedApplication.status) ? (
-                    <button
-                      type="button"
-                      onClick={() => setWithdrawModalApp(selectedApplication)}
-                      className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition"
-                    >
-                      Withdraw Application
-                    </button>
-                  ) : null}
+                {/* Footer Controls */}
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    onClick={() => handleWithdrawApplication(selectedApplication.id)}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline"
+                  >
+                    Withdraw Application
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedApplication(null)}
+                    className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"
+                  >
+                    Close
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedApplication(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold transition shadow-2xs"
-                >
-                  Close
-                </button>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ==================== SUBMIT SAVED MODAL ==================== */}
-        {applyModalApp && (
-          <div className="fixed inset-0 z-60 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-              <h3 className="text-base font-bold text-slate-900">
-                Submit Application to {applyModalApp.company_name}
-              </h3>
-              <p className="text-xs text-slate-500">
-                You are moving <strong>{applyModalApp.job_title}</strong> from your Saved Wishlist into active recruitment screening.
-              </p>
-
+      {/* Quick-Add External Application Modal */}
+      {isQuickAddOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 font-sans">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 sm:p-7">
+            <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Optional Cover Note to Recruiter
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Share a brief note on why you're passionate about this role..."
-                  value={applyCoverNote}
-                  onChange={e => setApplyCoverNote(e.target.value)}
-                  className="w-full p-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                <h3 className="text-lg font-extrabold text-slate-900">Track External Job Application</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Add roles you applied to directly on company portals (e.g. Google, Amazon, Microsoft)
+                </p>
+              </div>
+              <button
+                onClick={() => setIsQuickAddOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddSubmit} className="space-y-3.5 text-xs font-medium">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Company Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Google, Atlassian, Zepto"
+                  required
+                  value={quickAddData.company}
+                  onChange={e => setQuickAddData({ ...quickAddData, company: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Role Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Software Development Engineer Intern"
+                  required
+                  value={quickAddData.title}
+                  onChange={e => setQuickAddData({ ...quickAddData, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Location</label>
+                  <input
+                    type="text"
+                    placeholder="Bangalore / Remote"
+                    value={quickAddData.location}
+                    onChange={e => setQuickAddData({ ...quickAddData, location: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">Initial Stage</label>
+                  <select
+                    value={quickAddData.status}
+                    onChange={e => setQuickAddData({ ...quickAddData, status: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="saved">Saved / Wishlist</option>
+                    <option value="applied">Applied</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="interview">Interview Scheduled</option>
+                    <option value="offer">Offer Received</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Interview / Reminder Date (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={quickAddData.reminderDate}
+                  onChange={e => setQuickAddData({ ...quickAddData, reminderDate: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Initial Notes (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Referral source, job link, recruiter contact..."
+                  value={quickAddData.notes}
+                  onChange={e => setQuickAddData({ ...quickAddData, notes: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setApplyModalApp(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  onClick={() => setIsQuickAddOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
-                  disabled={submittingApply}
-                  onClick={handlePromoteToApplied}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                  type="submit"
+                  disabled={submittingQuickAdd}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs"
                 >
-                  {submittingApply ? 'Submitting...' : 'Confirm Application'}
+                  {submittingQuickAdd ? 'Saving...' : 'Add to Pipeline'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-        )}
-
-        {/* ==================== WITHDRAW CONFIRMATION MODAL ==================== */}
-        {withdrawModalApp && (
-          <div className="fixed inset-0 z-60 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
-                <AlertCircle size={24} />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">
-                Withdraw Application?
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to withdraw your application for <strong>{withdrawModalApp.job_title}</strong> at {withdrawModalApp.company_name}? This action will update your status and stop recruiter review.
-              </p>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Reason for withdrawal (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Accepted another offer, scheduling conflict..."
-                  value={withdrawReason}
-                  onChange={e => setWithdrawReason(e.target.value)}
-                  className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setWithdrawModalApp(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Keep Application
-                </button>
-                <button
-                  type="button"
-                  disabled={submittingWithdraw}
-                  onClick={handleWithdraw}
-                  className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-50"
-                >
-                  {submittingWithdraw ? 'Withdrawing...' : 'Confirm Withdrawal'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
-export default CareerPathApplications;

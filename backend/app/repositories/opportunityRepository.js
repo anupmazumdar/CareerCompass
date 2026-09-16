@@ -309,6 +309,148 @@ class OpportunityRepository {
       eligible_grad_years: parsedGradYears
     };
   }
+
+  calculateMatchScore(studentProfile, opportunity) {
+    if (!studentProfile) {
+      return {
+        score: null,
+        skillScore: 0,
+        eligibilityScore: 0,
+        preferenceScore: 0,
+        completenessScore: 0,
+        matchedSkills: [],
+        missingSkills: opportunity.required_skills || []
+      };
+    }
+
+    // 1. Skill Overlap (50%)
+    const studentSkillNames = new Set(
+      (studentProfile.skills || []).map((s) => (s.canonical_name || s.name || '').toLowerCase())
+    );
+    const required = (opportunity.required_skills || []).map((s) => String(s).trim());
+    const matchedSkills = [];
+    const missingSkills = [];
+
+    required.forEach((r) => {
+      const lower = r.toLowerCase();
+      let hasSkill = studentSkillNames.has(lower);
+      if (!hasSkill) {
+        for (const s of studentSkillNames) {
+          if (s.includes(lower) || lower.includes(s)) {
+            hasSkill = true;
+            break;
+          }
+        }
+      }
+      if (hasSkill) {
+        matchedSkills.push(r);
+      } else {
+        missingSkills.push(r);
+      }
+    });
+
+    let skillScore = 50;
+    if (required.length > 0) {
+      skillScore = Math.round(50 * (matchedSkills.length / required.length));
+    }
+
+    // 2. Eligibility Criteria (20%)
+    let eligibilityScore = 0;
+    // CGPA (10 pts)
+    const minCgpa = opportunity.min_cgpa !== null && opportunity.min_cgpa !== undefined ? Number(opportunity.min_cgpa) : null;
+    const studentCgpa = studentProfile.cgpa !== null && studentProfile.cgpa !== undefined ? Number(studentProfile.cgpa) : null;
+    if (minCgpa === null || minCgpa === 0) {
+      eligibilityScore += 10;
+    } else if (studentCgpa !== null && studentCgpa >= minCgpa) {
+      eligibilityScore += 10;
+    }
+
+    // Branch (5 pts)
+    const branches = opportunity.eligible_branches || ['All'];
+    const studentBranch = (studentProfile.branch || '').toLowerCase();
+    const isBranchEligible = branches.some((b) => b.toLowerCase() === 'all' || (studentBranch && studentBranch.includes(b.toLowerCase())));
+    if (isBranchEligible) eligibilityScore += 5;
+
+    // Graduation Year (5 pts)
+    const gradYears = (opportunity.eligible_grad_years || ['All']).map(String);
+    const studentGradYear = studentProfile.graduation_year ? String(studentProfile.graduation_year) : '';
+    const isYearEligible = gradYears.includes('All') || (studentGradYear && gradYears.includes(studentGradYear));
+    if (isYearEligible) eligibilityScore += 5;
+
+    // 3. Preference Alignment (20%)
+    let preferenceScore = 0;
+    // Role (10 pts)
+    const prefRoles = [];
+    if (studentProfile.preferred_role) prefRoles.push(studentProfile.preferred_role.toLowerCase());
+    if (studentProfile.preferred_roles) {
+      let roles = [];
+      try {
+        roles = Array.isArray(studentProfile.preferred_roles) ? studentProfile.preferred_roles : JSON.parse(studentProfile.preferred_roles || '[]');
+      } catch (_) {
+        roles = (studentProfile.preferred_roles || '').split(',').map(r => r.trim());
+      }
+      roles.forEach(r => prefRoles.push(r.toLowerCase()));
+    }
+    const oppTitle = (opportunity.title || '').toLowerCase();
+    const isRoleMatch = prefRoles.length === 0 || prefRoles.some(pr => oppTitle.includes(pr) || pr.includes(oppTitle));
+    if (isRoleMatch) preferenceScore += 10;
+
+    // Location (5 pts)
+    const prefLocs = [];
+    if (studentProfile.preferred_location) prefLocs.push(studentProfile.preferred_location.toLowerCase());
+    if (studentProfile.preferred_locations) {
+      let locs = [];
+      try {
+        locs = Array.isArray(studentProfile.preferred_locations) ? studentProfile.preferred_locations : JSON.parse(studentProfile.preferred_locations || '[]');
+      } catch (_) {
+        locs = (studentProfile.preferred_locations || '').split(',').map(l => l.trim());
+      }
+      locs.forEach(l => prefLocs.push(l.toLowerCase()));
+    }
+    const oppLoc = (opportunity.location || '').toLowerCase();
+    const isLocMatch = prefLocs.length === 0 || prefLocs.some(pl => oppLoc.includes(pl) || pl.includes(oppLoc) || pl === 'remote');
+    if (isLocMatch) preferenceScore += 5;
+
+    // Work Mode (5 pts)
+    const prefMode = (studentProfile.work_mode_preference || 'any').toLowerCase();
+    const oppMode = (opportunity.work_mode || 'any').toLowerCase();
+    const isModeMatch = prefMode === 'any' || oppMode === 'any' || prefMode === oppMode;
+    if (isModeMatch) preferenceScore += 5;
+
+    // 4. Profile Completeness (10%)
+    const completeness = studentProfile.profile_completeness || studentProfile.completeness_report?.percentage || 0;
+    const completenessScore = Math.round(completeness * 0.10);
+
+    const totalScore = Math.min(100, Math.max(0, skillScore + eligibilityScore + preferenceScore + completenessScore));
+
+    return {
+      score: totalScore,
+      skillScore,
+      eligibilityScore,
+      preferenceScore,
+      completenessScore,
+      matchedSkills,
+      missingSkills,
+      weights: {
+        skills: 0.5,
+        eligibility: 0.2,
+        preferences: 0.2,
+        completeness: 0.1
+      }
+    };
+  }
+
+  enrichWithMatchScores(studentProfile, opportunities) {
+    if (!Array.isArray(opportunities)) return [];
+    return opportunities.map((opp) => {
+      const match = this.calculateMatchScore(studentProfile, opp);
+      return {
+        ...opp,
+        match_score: match.score,
+        match_breakdown: match
+      };
+    });
+  }
 }
 
 module.exports = new OpportunityRepository();

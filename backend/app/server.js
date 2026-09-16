@@ -27,6 +27,7 @@ const skillRoutes = require('./api/skills/routes');
 const matchingRoutes = require('./api/matching/routes');
 const recommendationRoutes = require('./api/recommendations/routes');
 const resumeRoutes = require('./api/resumes/routes');
+const opportunityRoutes = require('./api/opportunities/routes');
 const aiRoutes = require('./api/ai/routes');
 const adminRoutes = require('./api/admin/routes');
 
@@ -66,10 +67,11 @@ app.get('/api/health', (req, res) => {
 // 3. Mount Domain API Routers
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/student', studentRoutes);
 app.use('/api/recruiters', recruiterRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/jobs', jobRoutes);
-app.use('/api/opportunities', jobRoutes);
+app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/matching', matchingRoutes);

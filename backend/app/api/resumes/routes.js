@@ -126,11 +126,27 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
     let resumeId = null;
 
     if (studentProfile) {
-      // In SQLite/Postgres: save resume metadata
+      // Check maximum 3 resumes
+      const existingResumes = await db.all('SELECT id, is_primary FROM resumes WHERE student_id = ?', [studentProfile.id]);
+      if (existingResumes.length >= 3) {
+        return res.status(400).json({
+          success: false,
+          error: 'LIMIT_REACHED',
+          message: 'Maximum 3 resume versions allowed. Delete an existing version to upload a new one.'
+        });
+      }
+
+      const versionLabel = req.body.version_label || req.body.versionLabel || `v${existingResumes.length + 1}`;
+      const shouldBePrimary = existingResumes.length === 0 || req.body.is_primary === 'true' || req.body.is_primary === true;
+
+      if (shouldBePrimary && existingResumes.length > 0) {
+        await db.run('UPDATE resumes SET is_primary = 0 WHERE student_id = ?', [studentProfile.id]);
+      }
+
       const saveRes = await db.run(
-        `INSERT INTO resumes (student_id, file_name, file_path, mime_type, file_size, raw_text, is_primary)
-         VALUES (?, ?, ?, ?, ?, ?, 1)`,
-        [studentProfile.id, originalname, `memory://uploads/${Date.now()}_${originalname}`, mimetype, size, extractedText.slice(0, 8000)]
+        `INSERT INTO resumes (student_id, file_name, file_path, mime_type, file_size, raw_text, version_label, is_primary)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [studentProfile.id, originalname, `memory://uploads/${Date.now()}_${originalname}`, mimetype, size, extractedText.slice(0, 8000), versionLabel, shouldBePrimary ? 1 : 0]
       );
       resumeId = saveRes.lastID;
 

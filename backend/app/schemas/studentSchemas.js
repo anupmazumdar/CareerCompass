@@ -7,11 +7,21 @@ const personalProfileSchema = z.object({
   bio: z.string().max(2000).optional().nullable(),
   location: z.string().max(120).optional().nullable(),
   phone: z.string().max(30).optional().nullable(),
+  college: z.string().max(200).optional().nullable(),
+  degree: z.string().max(100).optional().nullable(),
+  branch: z.string().max(100).optional().nullable(),
+  current_semester: z.coerce.number().int().min(1).max(12).optional().nullable(),
+  graduation_year: z.coerce.number().int().min(2000).max(2040).optional().nullable(),
+  cgpa: z.coerce.number().min(0).max(10).optional().nullable(),
+  achievements: z.union([z.string().max(3000), z.array(z.string())]).optional().nullable(),
   github_url: z.string().url().optional().nullable().or(z.literal('')),
   linkedin_url: z.string().url().optional().nullable().or(z.literal('')),
   portfolio_url: z.string().url().optional().nullable().or(z.literal('')),
   preferred_role: z.string().max(120).optional().nullable(),
+  preferred_roles: z.array(z.string()).optional().nullable(),
   preferred_location: z.string().max(120).optional().nullable(),
+  preferred_locations: z.array(z.string()).optional().nullable(),
+  work_mode_preference: z.enum(['remote', 'hybrid', 'onsite', 'any']).optional().nullable(),
   is_public: z.boolean().optional().nullable()
 });
 
@@ -46,10 +56,37 @@ const skillSchema = z.object({
   proficiencyLevel: z.enum(['beginner', 'intermediate', 'expert']).default('intermediate')
 });
 
+const resumeSchema = z.object({
+  version_label: z.string().min(1).max(50).optional(),
+  versionLabel: z.string().min(1).max(50).optional(),
+  file_name: z.string().min(1).max(255).optional(),
+  fileName: z.string().min(1).max(255).optional(),
+  file_path: z.string().min(1).max(500).optional(),
+  filePath: z.string().min(1).max(500).optional(),
+  file_size: z.coerce.number().int().optional().nullable(),
+  fileSize: z.coerce.number().int().optional().nullable(),
+  mime_type: z.string().max(100).optional().nullable(),
+  mimeType: z.string().max(100).optional().nullable(),
+  raw_text: z.string().max(50000).optional().nullable(),
+  rawText: z.string().max(50000).optional().nullable(),
+  is_primary: z.boolean().optional().default(false),
+  isPrimary: z.boolean().optional().default(false)
+}).refine(data => data.file_name || data.fileName, { message: 'file_name is required' });
+
+const goalSchema = z.object({
+  title: z.string().min(2, 'Goal title is required').max(150),
+  description: z.string().max(1000).optional().nullable(),
+  category: z.enum(['skill', 'application', 'project', 'interview', 'other']).default('skill'),
+  target_date: z.string().optional().nullable(),
+  status: z.enum(['not_started', 'in_progress', 'completed', 'archived']).default('in_progress')
+});
+
 module.exports = {
   personalProfileSchema,
   educationSchema,
   projectSchema,
   certificationSchema,
-  skillSchema
+  skillSchema,
+  resumeSchema,
+  goalSchema
 };
