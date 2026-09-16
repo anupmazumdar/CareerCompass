@@ -1,6 +1,13 @@
 // Central Frontend Configuration
 const isProduction = process.env.NODE_ENV === 'production';
-export const API_BASE_URL = process.env.REACT_APP_API_URL || (isProduction ? '' : 'http://localhost:3001');
+let apiUrl = (process.env.REACT_APP_API_URL || '').trim();
+if (apiUrl === '""' || apiUrl === "''" || apiUrl === '/') {
+  apiUrl = '';
+}
+if (!apiUrl && !isProduction) {
+  apiUrl = 'http://localhost:3001';
+}
+export const API_BASE_URL = apiUrl;
 
 export const THEME_KEY = 'talentai_theme';
 export const AUTH_STORAGE_KEY = 'talentai_auth';
