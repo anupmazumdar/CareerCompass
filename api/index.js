@@ -3,7 +3,7 @@
 const { app } = require('../backend/app/server');
 const db = require('../backend/app/core/database/connection');
 const { runMigrations } = require('../database/migrations/migrate');
-const { seed } = require('../database/seeds/seed_career_compass_30');
+const { seedDatabase } = require('../database/seeds/seed');
 
 let initPromise = null;
 
@@ -18,11 +18,11 @@ async function ensureDbReady() {
         await runMigrations(db.DB_PATH);
       }
 
-      // 2. Ensure initial dataset (30 opportunities + demo student Alex Chen) is seeded
+      // 2. Ensure initial dataset (40+ opportunities + demo student Alex Chen) is seeded
       const oppCount = await db.get('SELECT COUNT(*) as count FROM opportunities');
       if (!oppCount || oppCount.count === 0) {
-        console.log('🌱 Seeding 30 realistic opportunities & demo student profile on cold start...');
-        await seed();
+        console.log('🌱 Seeding 40+ realistic opportunities & demo student profile on cold start...');
+        await seedDatabase(db.DB_PATH);
       }
     } catch (err) {
       console.warn('⚠️ Serverless DB initialization notice:', err.message);

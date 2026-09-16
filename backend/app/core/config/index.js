@@ -7,9 +7,22 @@ const dotenv = require('dotenv');
 const envPath = path.resolve(__dirname, '../../../../.env');
 dotenv.config({ path: envPath });
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+const isProduction = nodeEnv === 'production';
+
+// Fail-fast in production if secrets are missing or insecure
+if (isProduction) {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret.includes('default_') || jwtSecret.length < 32) {
+    throw new Error(
+      'FATAL SECURITY CONFIGURATION: In production, JWT_SECRET must be explicitly set to a cryptographically secure key of at least 32 characters.'
+    );
+  }
+}
+
 module.exports = {
   port: Number(process.env.PORT || 3001),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv,
   jwt: {
     secret: process.env.JWT_SECRET || 'default_jwt_development_secret_key_change_in_production',
     accessSecret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'default_jwt_access_secret_key_min_32_bytes',

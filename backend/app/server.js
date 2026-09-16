@@ -156,9 +156,9 @@ async function ensureDbReady() {
     }
     const oppCount = await db.get('SELECT COUNT(*) as count FROM opportunities');
     if (!oppCount || oppCount.count === 0) {
-      logger.info('🌱 Seeding 30 opportunities & demo student profile...');
-      const { seed } = require(path.resolve(__dirname, '../../database/seeds/seed_career_compass_30'));
-      await seed();
+      logger.info('🌱 Seeding realistic opportunities & demo student profile...');
+      const { seedDatabase } = require(path.resolve(__dirname, '../../database/seeds/seed'));
+      await seedDatabase(db.DB_PATH);
     }
   } catch (err) {
     logger.warn(`⚠️ ensureDbReady notice: ${err.message}`);

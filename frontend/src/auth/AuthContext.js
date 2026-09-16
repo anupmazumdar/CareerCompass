@@ -1,6 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AUTH_STORAGE_KEY } from '../config';
 
+export function getStoredAuth() {
+  try {
+    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    const token = parsed?.token || parsed?.accessToken;
+    const user = parsed?.user || parsed;
+    if (token) return { token, user };
+  } catch (_) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  return null;
+}
+
+export function getStoredToken() {
+  const auth = getStoredAuth();
+  return auth ? auth.token : null;
+}
+
+export function getStoredUser() {
+  const auth = getStoredAuth();
+  return auth ? auth.user : null;
+}
+
+export function clearStoredAuth() {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (_) {}
+}
+
+export function setStoredAuth(userData) {
+  const token = userData?.accessToken || userData?.token;
+  const user = userData?.user || userData;
+  const authPayload = { isAuthenticated: Boolean(token), user, token };
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authPayload));
+  } catch (_) {}
+  return authPayload;
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -12,36 +52,25 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.token || parsed.accessToken)) {
-          setAuthState({
-            isAuthenticated: true,
-            user: parsed.user || parsed,
-            token: parsed.token || parsed.accessToken
-          });
-        }
-      } catch (_) {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
+    const stored = getStoredAuth();
+    if (stored) {
+      setAuthState({
+        isAuthenticated: true,
+        user: stored.user,
+        token: stored.token
+      });
     }
     setLoading(false);
   }, []);
 
   const login = (userData) => {
-    const token = userData.accessToken || userData.token;
-    const user = userData.user || userData;
-    const authPayload = { isAuthenticated: true, user, token };
-
+    const authPayload = setStoredAuth(userData);
     setAuthState(authPayload);
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authPayload));
   };
 
   const logout = () => {
+    clearStoredAuth();
     setAuthState({ isAuthenticated: false, user: null, token: null });
-    localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
   return (
@@ -58,3 +87,4 @@ export function useAuth() {
   }
   return context;
 }
+

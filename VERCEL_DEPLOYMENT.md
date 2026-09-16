@@ -1,36 +1,40 @@
 # Vercel Deployment Guide
 
-Your project is now configured to be deployed on Vercel as a monorepo! The frontend will be built as a static site, and the backend Express App will run as a Serverless API Function.
+CareerCompass is configured for unified monorepo deployment on Vercel:
+- **Frontend SPA**: Built from `frontend` into `frontend/build` via `cd frontend && npm run build`.
+- **Backend API**: Dispatched via Serverless Function at `api/index.js` (which mounts `backend/app/server.js`).
+- **Database**: SQLite automated migration and cold-start seeding in `/tmp` for serverless runtimes.
+
+---
 
 ## Deployment Steps
 
-1. **Push to GitHub**: 
-   Push this entire folder to a GitHub repository.
+1. **Push to GitHub**:
+   Push the latest changes on `main` to your repository:
+   ```bash
+   git push origin main
+   ```
 
 2. **Connect to Vercel**:
-   Go to your [Vercel Dashboard](https://vercel.com/dashboard) and click "Add New... -> Project".
-   Import the GitHub repository you just pushed.
+   - Navigate to [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New... -> Project"**.
+   - Import `anupmazumdar/CareerCompass`.
 
 3. **Configure Project Settings**:
-   - **Framework Preset**: Vercel should automatically detect `Create React App` from `frontend` or `Other`. You can leave it as-is.
-   - **Root Directory**: Ensure the root directory is set to your project's root folder (`/`), not `/frontend` or `/backend`. The custom `vercel.json` file will take care of building the frontend and linking your API logic.
-   
+   - **Framework Preset**: `Other` or `Create React App`.
+   - **Root Directory**: `./` (leave at root — `vercel.json` coordinates building and routing).
+   - **Build Command**: `cd frontend && npm run build` (overridden by `vercel.json`).
+   - **Output Directory**: `frontend/build` (overridden by `vercel.json`).
+
 4. **Environment Variables**:
-   Under the "Environment Variables" section in Vercel, copy and paste all the keys from your `backend/.env` file:
-   - `JWT_SECRET`
-   - `AI_PROVIDER`
-   - `OPENAI_API_KEY` (if used)
-   - `GOOGLE_GEMINI_API_KEY` (if used)
-   - `GOOGLE_CLOUD_PROJECT_ID` (if used)
-   - `GOOGLE_CLOUD_BUCKET_NAME` (if used)
-   - *Note: Don't paste local file paths for Cloud Credentials on Vercel. Instead, you can base64 encode the service account JSON and decode it on the server, or use standard environment keys for the cloud provider.*
+   Configure these environment variables in your Vercel Project Settings:
+   - `JWT_SECRET` — Strong secret (at least 32 characters, e.g., generated with crypto).
+   - `JWT_ACCESS_SECRET` — Optional (defaults to `JWT_SECRET`).
+   - `JWT_REFRESH_SECRET` — Optional (defaults to `JWT_SECRET`).
+   - `AI_PROVIDER` — `openrouter` (or `gemini`).
+   - `OPENROUTER_API_KEY` — Your OpenRouter API key.
+   - `OPENROUTER_MODEL` — e.g. `mistralai/mistral-7b-instruct:free` or `anthropic/claude-3.5-sonnet`.
+   - `NODE_ENV` — `production`.
 
 5. **Deploy**:
-   Click the "Deploy" button. Vercel will install dependencies, build your React frontend, and deploy your Express backend.
+   Click **Deploy**. Vercel will install dependencies, build the React SPA, and mount `/api/*` to `api/index.js`.
 
-## What was modified:
-- Created a `vercel.json` in root to map `/api/*` requests to your Node.JS serverless backend and map everything else to the built React frontend.
-- Created a `package.json` in the root folder to handle installing dependencies for both subprojects.
-- Updated `backend/server.js`'s `multer` configuration to correctly use `/tmp` folder (`os.tmpdir()`) when running on Vercel. (Serverless functions do not have write access to `/uploads`).
-- Prevented `app.listen` from triggering during Vercel Serverless environment execution.
-- Dynamically switched `API_URL` in `frontend/src/App.js` to securely point to the `/api` route in production without hardcoding localhost.

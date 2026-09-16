@@ -309,7 +309,7 @@ export function CareerPathSkills() {
 
               return (
                 <button
-                  key={r.id}
+                  key={r.id || r.name || idx}
                   type="button"
                   onClick={() => setSelectedRole(r.id)}
                   className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between space-y-3 ${

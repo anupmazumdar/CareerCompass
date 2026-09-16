@@ -11,11 +11,12 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { api } from '../api/client';
-import { AUTH_STORAGE_KEY } from '../config';
+import { useAuth } from '../auth/AuthContext';
 
 export function CareerPathNav() {
   const location = useLocation();
-  const [student, setStudent] = useState(null);
+  const { user, logout } = useAuth();
+  const [student, setStudent] = useState(user);
 
   useEffect(() => {
     async function loadUser() {
@@ -26,23 +27,17 @@ export function CareerPathNav() {
         }
       } catch (err) {
         console.warn('Failed to load user profile from API:', err.message);
-        // Fallback to localStorage user
-        const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (stored) {
-          try {
-            setStudent(JSON.parse(stored).user || null);
-          } catch (parseErr) {
-            console.warn('Failed to parse cached auth state:', parseErr.message);
-          }
+        if (user) {
+          setStudent(user);
         }
       }
     }
     loadUser();
-  }, []);
+  }, [user]);
 
   const handleLogout = () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    window.location.href = '/';
+    logout();
+    window.location.href = '/login';
   };
 
   const navLinks = [

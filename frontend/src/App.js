@@ -147,7 +147,7 @@ const SUBSCRIPTION_PLANS = {
 };
 
 // ==================== MAIN APP COMPONENT ====================
-export default function AIRecruitmentAgent() {
+export default function AIRecruitmentAgent({ defaultShowAuth = false } = {}) {
   const { logout: auth0Logout, isAuthenticated: isAuth0Authenticated } = useAuth0();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [userType, setUserType] = useState(null);
@@ -156,7 +156,7 @@ export default function AIRecruitmentAgent() {
   const [theme, setTheme] = useState(() => localStorage.getItem('talentai_theme') || 'dark');
   const [subscription, setSubscription] = useState(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(() => Boolean(defaultShowAuth) || (typeof window !== 'undefined' && window.location.pathname === '/login'));
   const [authMode, setAuthMode] = useState('login');
   const [authState, setAuthState] = useState({
     isAuthenticated: false,

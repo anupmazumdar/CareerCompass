@@ -6,7 +6,11 @@ let sqlite3;
 try {
   sqlite3 = require('sqlite3').verbose();
 } catch (err) {
-  sqlite3 = require(path.resolve(__dirname, '../../backend/node_modules/sqlite3')).verbose();
+  try {
+    sqlite3 = require(path.resolve(__dirname, '../../backend/node_modules/sqlite3')).verbose();
+  } catch (backendErr) {
+    sqlite3 = require(path.resolve(__dirname, '../node_modules/sqlite3')).verbose();
+  }
 }
 
 const DATA_DIR = process.env.DB_DIR || path.resolve(__dirname, '../../data');

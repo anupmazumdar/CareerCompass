@@ -1,5 +1,13 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+
+// Allocate isolated SQLite DB in os.tmpdir() before loading server/database
+const tempDbPath = path.join(os.tmpdir(), `test_tracker_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.db`);
+process.env.DB_PATH = tempDbPath;
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { app, startServer } = require('../../app/server');
@@ -17,6 +25,11 @@ test.before(async () => {
 test.after(async () => {
   if (server) await new Promise((r) => server.close(r));
   await close();
+  try {
+    fs.rmSync(tempDbPath, { force: true });
+    fs.rmSync(`${tempDbPath}-wal`, { force: true });
+    fs.rmSync(`${tempDbPath}-shm`, { force: true });
+  } catch (_) {}
 });
 
 test('Application Tracker Flow - Auto-apply, Kanban Movement, Custom External Job, and Analytics', async () => {

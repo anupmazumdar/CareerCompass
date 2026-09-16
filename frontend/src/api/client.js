@@ -1,4 +1,5 @@
-import { API_BASE_URL, AUTH_STORAGE_KEY } from '../config';
+import { API_BASE_URL } from '../config';
+import { getStoredToken } from '../auth/AuthContext';
 
 /**
  * Backend Response Envelopes (Source of truth: backend/app/utils/response.js):
@@ -24,16 +25,10 @@ export async function apiRequest(endpoint, options = {}) {
     ...(options.headers || {})
   };
 
-  // Attach auth token if available
-  const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (savedAuth) {
-    try {
-      const parsed = JSON.parse(savedAuth);
-      const token = parsed.token || parsed.accessToken;
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    } catch (_) {}
+  // Attach auth token if available via unified AuthContext accessor
+  const token = getStoredToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   // Handle FormData (don't set Content-Type)

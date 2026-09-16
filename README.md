@@ -1,287 +1,198 @@
-# Unified TalentAI Career & Recruitment Platform
+# CareerCompass — Student Digital Career & Opportunity Platform
 
-[![Node.js CI](https://github.com/anupmazumdar/anupmazumdar-AIRecruitmentAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/anupmazumdar/anupmazumdar-AIRecruitmentAgent)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js CI](https://github.com/anupmazumdar/CareerCompass/actions/workflows/ci.yml/badge.svg)](https://github.com/anupmazumdar/CareerCompass)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org)
-[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org)
+[![React](https://img.shields.io/badge/React-18.x-61dafb.svg)](https://reactjs.org)
+[![SQLite](https://img.shields.io/badge/Database-SQLite%203-003B57.svg)](https://sqlite.org)
 
-An enterprise-grade, unified AI-powered career and recruitment monorepo platform connecting students, university training & placement officers (TPOs), and technical recruiters.
-
----
-
-## 1. Executive Summary
-
-TalentAI consolidates the student career journey and corporate talent recruitment into **ONE cohesive platform**.
-
-* **One Unified Frontend**: React 18 single page application with role-aware portals and responsive styling.
-* **One Layered Backend**: Node.js / Express API architecture with optional Python ML service.
-* **One Relational Database**: SQLite for instant zero-configuration local development and PostgreSQL for production scale.
-* **One Authentication System**: HS256 JWT access tokens with decoupled Role-Based Access Control (RBAC).
-* **One Two-Way Explainable Matching Engine**: Deterministic hybrid scoring algorithm serving student job discovery and recruiter candidate funnels.
+An enterprise-grade, student-centric **Digital Career Management Platform** designed to empower students and university placement cells with deterministic opportunity discovery, personalized skill gap intelligence, multi-resume management, and interactive application lifecycle tracking.
 
 ---
 
-## 2. Platform Roles
+## 1. Platform Overview & Highlights
 
- | Role | Target Persona | Key Capabilities | 
- | :--- | :--- | :--- | 
- | **Student** | Students, Graduates, Job Seekers | Portfolio setup, ATS resume diagnostic, skill verification, job recommendations, one-click application submission, and stage tracking. | 
- | **Recruiter** | Talent Acquisition, Hiring Managers | Job creation with required/preferred skills, AI-ranked candidate funnels, transparent match score breakdowns, and stage advancement. | 
- | **Admin / TPO** | College TPO, Platform Administrators | Recruiter and company verification, skill taxonomy governance, campus placement analytics, and immutable audit log review. | 
+CareerCompass bridges the gap between academic graduation and high-impact technology careers:
 
----
-
-## 3. Core & AI Features
-
-### 3.1 Explainable Two-Way Matching Engine
-
-Calculates compatibility $S(c, j) \in [0, 100]$ using deterministic, weighted criteria:
-
-* **Skills (40%)**: Matches required and preferred skills against canonical taxonomy and aliases.
-* **Experience (20%)**: Evaluates candidate experience years against job minimum thresholds.
-* **Education (15%)**: Evaluates academic degree alignment and graduation status.
-* **Projects (10%)**: Analyzes candidate project portfolio and technology tags.
-* **Location (10%)**: Considers remote preferences, city alignment, and relocation willingness.
-* **Certifications (5%)**: Credits accredited industry certifications.
-
-### 3.2 ATS Resume Intelligence
-
-* Deterministic section and keyword parser extracting contact info, skills, education, and work history.
-* Readability, keyword density, and formatting diagnostics.
-* Actionable improvement suggestions without subjective hallucination.
-
-### 3.3 Application Pipeline & Audit History
-
-* Structured state machine: `APPLIED` $\rightarrow$ `UNDER_REVIEW` $\rightarrow$ `SHORTLISTED` $\rightarrow$ `INTERVIEW` $\rightarrow$ `SELECTED` / `REJECTED`.
-* Immutable `application_status_history` logging timestamps, previous/new stages, and actor IDs.
+* **Opportunity Discovery Engine:** 42+ curated, realistic opportunities spanning Internships, Full-Time Jobs, Hackathons, Scholarships, and Certified Courses across Remote, Hybrid, and Onsite modalities.
+* **Deterministic Matching Score:** Transparent multi-factor algorithm weighting **Skills (50%)**, **Role Alignment (20%)**, **Location (15%)**, and **Work Mode (15%)** — giving students explicit score breakdowns.
+* **Skill Gap Radar & Curated Resources:** Automatically compares student skill profiles against target opportunity requirements, linking directly to free, high-yield learning modules (YouTube, official documentation).
+* **Multi-Resume Versioning:** Upload and tag multiple resume profiles (e.g. *Full-Stack Core*, *Data Science*, *Cloud DevOps*), dynamically choosing which version accompanies each application.
+* **Interactive Application Kanban:** Visual 5-stage tracking (`saved` $\rightarrow$ `applied` $\rightarrow$ `interview` $\rightarrow$ `offer` $\rightarrow$ `rejected`), custom external application logging, note-taking, and interview reminder alerts.
+* **AI Career Advisor:** Grounded career guidance powered by OpenRouter / Gemini or zero-cost local heuristics, recommending actionable upskilling roadmaps without hallucinated prerequisites.
 
 ---
 
-## 4. Repository Structure
+## 2. System Architecture
 
-```text
-/
-├── frontend/                       # Unified React 18 Single Page Application
-│   ├── public/                     # Static assets and HTML shell
-│   ├── src/                        # Responsibility-driven frontend modules
-│   │   ├── components/             # Reusable UI primitives (Buttons, Modals, Navbar)
-│   │   ├── pages/                  # Top-level pages (Home, Privacy, Terms)
-│   │   ├── layouts/                # Shared layout shells (AppLayout)
-│   │   ├── hooks/                  # Custom hooks (useAuth, useDebounce)
-│   │   ├── services/               # API & Local Storage services
-│   │   ├── api/                    # Axios HTTP client with Bearer auth
-│   │   ├── auth/                   # AuthContext & ProtectedRoute
-│   │   ├── student/                # Student portal components
-│   │   ├── recruiter/              # Recruiter portal components
-│   │   ├── admin/                  # Admin & TPO governance views
-│   │   ├── jobs/                   # Job board and posting views
-│   │   ├── applications/           # Application tracker views
-│   │   ├── resume/                 # ATS resume diagnostic views
-│   │   ├── matching/               # Match score badges and explanations
-│   │   ├── skills/                 # Skill tags and taxonomy selector
-│   │   ├── notifications/          # In-app notification center
-│   │   ├── utils/                  # Formatting utilities
-│   │   ├── types/                  # Shared frontend enums
-│   │   └── config/                 # Endpoint configuration
-│   ├── tests/                      # Component, integration, and e2e tests
-│   ├── package.json
-│   └── README.md
-│
-├── backend/                        # Layered Express & Node.js API Service
+```
+                                  +-----------------------+
+                                  |   Web Browser (SPA)   |
+                                  | React 18 + TailwindCSS|
+                                  +-----------------------+
+                                              |
+                          HTTP /api/*         | Static Assets
+                                              v
+                              +-------------------------------+
+                              |    Vercel Monorepo Serverless |
+                              |      (api/index.js Router)    |
+                              +-------------------------------+
+                                              |
+                                              v
+                              +-------------------------------+
+                              |   Express.js Application Core |
+                              |    RBAC Auth + Domain Routers |
+                              +-------------------------------+
+                                  |                       |
+                                  v                       v
+                      +----------------------+ +----------------------+
+                      |  SQLite 3 Database   | | External AI Gateway  |
+                      | (Auto-migrated &     | | (OpenRouter/Mistral/ |
+                      |  Seeded on boot)     | |  Google Gemini)      |
+                      +----------------------+ +----------------------+
+```
+
+### Monorepo Structure
+
+```
+CareerCompass/
+├── api/                         # Vercel Serverless Function entry (api/index.js)
+├── backend/                     # Express.js layered backend
 │   ├── app/
-│   │   ├── api/                    # Modular Express route controllers
-│   │   ├── core/                   # Auth, RBAC, DB connection, logging, error handling
-│   │   ├── models/                 # Domain entity classes
-│   │   ├── schemas/                # Request validation schemas
-│   │   ├── repositories/           # Data access layer (parameterized SQL)
-│   │   ├── services/               # Domain business logic services
-│   │   ├── ai/                     # Two-way matching engine, parser, prompts
-│   │   ├── middleware/             # Security and error middleware
-│   │   ├── utils/                  # Validators and HTTP response envelopes
-│   │   ├── server.js               # Express application entrypoint
-│   │   └── main.py                 # Python ML engine entrypoint
-│   ├── tests/                      # Unit, integration, security, and e2e tests
-│   ├── requirements.txt            # Python ML dependencies
-│   ├── package.json
-│   └── README.md
-│
-├── database/                       # Database migrations, seeds, schema, and ERD
-│   ├── schema/schema.sql           # Canonical 18-table relational DDL
-│   ├── migrations/migrate.js       # Migration runner
-│   ├── seeds/seed.js               # Canonical skill taxonomy and demo seeder
-│   ├── fixtures/                   # Test resume samples
-│   ├── ERD/database-erd.md         # Mermaid ER diagram
-│   └── README.md
-│
-├── security/                       # Security documentation & threat models
-│   ├── threat-model/               # STRIDE threat model
-│   ├── security-reports/           # Security audit and remediation report
-│   ├── penetration-tests/          # Automated penetration test suites
-│   ├── vulnerability-checklists/   # OWASP Top 10 checklist
-│   ├── security-policies/          # Candidate data privacy and access policy
-│   └── README.md
-│
-├── authentication/                 # Authentication architecture & diagrams
-│   ├── documentation/              # JWT lifecycle & RBAC matrix documentation
-│   ├── flows/                      # Registration, login, and refresh sequence diagrams
-│   ├── diagrams/                   # Architecture diagrams
-│   └── README.md
-│
-├── testing/                        # Cross-system test strategy & test plans
-│   ├── test-plans/                 # 6-gate verification plan
-│   ├── test-cases/                 # 15 deterministic matching test scenarios
-│   ├── test-data/                  # Mock test accounts and jobs
-│   ├── security-tests/             # RBAC and IDOR test documentation
-│   ├── performance-tests/          # Target latency benchmarks
-│   ├── e2e/                        # End-to-end user flows
-│   ├── reports/                    # Test execution logs
-│   └── README.md
-│
-├── docs/                           # Central platform documentation
-│   ├── architecture/               # System and module architecture docs
-│   ├── api/                        # REST API endpoint catalog
-│   ├── database/                   # Database architecture docs
-│   ├── ai/                         # Matching engine & resume intelligence docs
-│   ├── security/                   # Security architecture docs
-│   ├── deployment/                 # Deployment guides
-│   ├── user-guides/                # Student, Recruiter, and Admin user manuals
-│   └── diagrams/                   # 10 master Mermaid architectural diagrams
-│
-├── scripts/                        # Automation & developer scripts
-│   ├── setup/                      # One-click environment bootstrap (setup.ps1, setup.sh)
-│   ├── database/                   # Migration and seed scripts
-│   ├── development/                # Dev runner
-│   ├── testing/                    # Test runner scripts
-│   └── deployment/                 # Production deployment scripts
-│
-├── infrastructure/                 # Container and deployment manifests
-│   ├── docker/                     # Dockerfile.frontend, Dockerfile.backend
-│   ├── nginx/                      # Nginx reverse proxy configuration
-│   ├── deployment/                 # Production docker-compose configs
-│   └── monitoring/                 # Container healthcheck probe
-│
-├── .github/workflows/              # GitHub Actions CI/CD pipelines
-├── .env.example                    # Clean environment template (no secrets)
-├── docker-compose.yml              # Local multi-container development setup
-├── Makefile                        # Unified command shortcuts
-└── README.md
-
+│   │   ├── api/                 # Domain routes (auth, students, opportunities, applications, skills)
+│   │   ├── core/                # Config, SQLite connection, security, rate limiters, logging
+│   │   ├── models/              # Student, opportunity, application, and resume domain models
+│   │   ├── repositories/        # SQL abstraction layer
+│   │   ├── services/            # Matching engine, AI career advisor, ATS parser
+│   │   └── server.js            # Express application bootstrap
+│   └── tests/                   # Integration, unit, security, and e2e test suites
+├── database/                    # Relational schema and seed data
+│   ├── migrations/              # Incremental migration runner (migrate.js)
+│   ├── schema/                  # Full relational DDL (schema.sql)
+│   └── seeds/                   # 42+ opportunities & student seed generator (seed.js)
+├── docs/                        # Technical & business documentation
+│   ├── business/                # Business case & product strategy
+│   ├── architecture/            # Architecture diagrams & contracts
+│   └── security/                # Threat model and security policies
+├── frontend/                    # React 18 single-page application
+│   ├── src/
+│   │   ├── api/                 # Unified client with JWT injection (client.js)
+│   │   ├── auth/                # AuthContext single source & ProtectedRoute guard
+│   │   ├── student/             # Student Digital Career suite (Dashboard, Opportunities, Kanban, Skills, Advisor, Profile)
+│   │   └── pages/               # Landing, Privacy Policy, Terms
+├── scripts/setup/               # Cross-platform environment bootstrap scripts (setup.sh / setup.ps1)
+├── vercel.json                  # Monorepo serverless deployment specification
+└── VERCEL_DEPLOYMENT.md         # Step-by-step production cloud deployment guide
 ```
 
 ---
 
-## 5. Getting Started (Local Development)
+## 3. Quick Start & Local Setup
 
 ### Prerequisites
+- **Node.js**: v18.x or v20.x LTS
+- **npm**: v9.x or later
 
-* Node.js 18+ (Node 20 recommended)
-* npm 9+
-* Optional: Docker & Docker Compose
-* Optional: Python 3.10+ (for Python ML service)
+### Automated Setup (Recommended)
 
-### One-Click Bootstrap
+Run the single-command platform setup to install all workspace dependencies, run database migrations, and seed sample opportunities:
 
-Run the setup script to install dependencies, run migrations, and seed initial demo data:
-
-**PowerShell (Windows):**
-
-```powershell
-./scripts/setup/setup.ps1
-
-```
-
-**Bash (Linux / macOS):**
-
+**On Linux / macOS:**
 ```bash
+chmod +x scripts/setup/setup.sh
 ./scripts/setup/setup.sh
-
 ```
 
-**Or using Make:**
+**On Windows (PowerShell):**
+```powershell
+.\scripts\setup\setup.ps1
+```
+
+### Manual Setup
+
+1. **Install Dependencies:**
+   ```bash
+   npm install
+   cd backend && npm install
+   cd ../frontend && npm install
+   cd ..
+   ```
+
+2. **Configure Environment:**
+   Create `.env` at the root of the repository:
+   ```env
+   PORT=3001
+   NODE_ENV=development
+   JWT_SECRET=super_secure_development_secret_min_32_characters_long!
+   AI_PROVIDER=openrouter
+   OPENROUTER_API_KEY=your_key_here
+   OPENROUTER_MODEL=mistralai/mistral-7b-instruct:free
+   ```
+
+3. **Migrate & Seed Database:**
+   ```bash
+   node database/migrations/migrate.js
+   node database/seeds/seed.js
+   ```
+
+4. **Start Development Servers:**
+   Run both backend and frontend concurrently from root:
+   ```bash
+   npm run dev
+   ```
+   - **Frontend App:** [http://localhost:3000](http://localhost:3000)
+   - **Backend API:** [http://localhost:3001](http://localhost:3001)
+
+---
+
+## 4. Default Demo Credentials
+
+The seed generator prepares out-of-the-box demo accounts for testing:
+
+| Role | Email | Password | Pre-seeded Context |
+|---|---|---|---|
+| **Student** | `student@careercompass.io` | `Password@123` | Alex Chen (MCA), 8 Skills, 1 Resume, 1 Active Goal |
+| **Recruiter**| `recruiter@razorpay.com` | `Password@123` | Razorpay Hiring Lead |
+| **Recruiter**| `recruiter@microsoft.com` | `Password@123` | Microsoft Cloud Recruiter |
+
+*Note: For production deployments, superadmin accounts are seeded exclusively via private environment variables (`SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD`).*
+
+---
+
+## 5. Testing & Verification
+
+The platform maintains 100% automated test coverage across unit, integration, and security gates:
 
 ```bash
-make setup
+# Run all backend test suites (ephemeral DB isolation)
+cd backend
+npm test
 
-```
+# Run frontend test suite
+cd ../frontend
+npm test -- --watchAll=false
 
-### Running Locally
-
-To start both backend and frontend concurrently:
-
-```bash
-npm run dev
-
-```
-
-* **Frontend App**: `http://localhost:3000`
-* **Backend API**: `http://localhost:5000` (or `3001` per configuration)
-* **API Health Check**: `http://localhost:5000/api/health`
-
----
-
-## 6. Seeded Demo Accounts
-
- | Role | Email | Password | Pre-loaded Data | 
- | :--- | :--- | :--- | :--- | 
- | **Student** | `student@talentai.edu` | `Password@123` | MCA Student, 6 verified skills, projects, education | 
- | **Recruiter** | `recruiter@techcorp.com` | `Password@123` | TechCorp Innovations recruiter, active job listing | 
-
-> **Security Notice**: Administrative / Superadmin accounts are **never** pre-seeded with public credentials. To provision an administrator account, configure `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` in your private `.env` or deployment environment variables.
-
----
-
-## 7. Testing Strategy & Execution
-
-The monorepo follows a strict 6-Gate verification protocol:
-
-```bash
-
-# Run all Backend test suites (Unit, Integration, Security, E2E)
-
-cd backend && npm test
-
-# Run all Frontend tests non-interactively
-
-cd frontend && npm test -- --watchAll=false
-
-# Run comprehensive platform tests
-
-./scripts/testing/run-all-tests.ps1
-
+# Validate production bundle
+npm run build
 ```
 
 ---
 
-## 8. Security & OWASP Compliance
+## 6. Vercel Cloud Deployment
 
-* **Authentication**: JWT access tokens (HS256) and secure password hashing (`bcryptjs`).
-* **Authorization**: Declarative server-side RBAC and Object-Level Access Control (OLAC) preventing IDOR data leaks.
-* **Injection Defense**: Parameterized SQL queries on all database operations.
-* **Application Hardening**: Helmet HTTP headers, CORS whitelisting, and rate limiting.
+CareerCompass is pre-configured for instant zero-configuration deployment to [Vercel](https://vercel.com):
 
----
-
-## 9. Deployment
-
-### Using Docker Compose
-
-```bash
-docker-compose up --build -d
-
-```
-
-### Cloud Production
-
-* **Backend**: Deploy container to Google Cloud Run, AWS ECS, or Render.
-* **Frontend**: Deploy static bundle to Vercel, Netlify, or Cloudflare Pages.
-* **Database**: Connect managed PostgreSQL via `DATABASE_URL`.
+1. Connect your GitHub repository to Vercel.
+2. Ensure Root Directory is set to `./` (root).
+3. Set environment variables in Vercel Project Settings:
+   - `JWT_SECRET` (at least 32 characters)
+   - `NODE_ENV=production`
+   - `OPENROUTER_API_KEY` (optional, for cloud AI features)
+4. Deploy. Vercel automatically builds the React SPA and serves `/api/*` requests through the serverless function in `api/index.js`.
+5. For complete instructions, review [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
 
 ---
 
-## 10. Contribution Workflow
+## 7. License
 
-1. Fork the repository and create a feature branch (`git checkout -b feat/your-feature`).
-2. Make modular changes adhering to layered architecture.
-3. Verify that all tests pass (`npm test` in backend and frontend).
-4. Commit using conventional commits (`feat:`, `fix:`, `docs:`, `test:`).
-5. Open a Pull Request for review.
+Distributed under the MIT License. See `LICENSE` for more information.
