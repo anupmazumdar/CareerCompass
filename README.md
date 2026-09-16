@@ -225,7 +225,8 @@ npm run dev
  | :--- | :--- | :--- | :--- | 
  | **Student** | `student@talentai.edu` | `Password@123` | MCA Student, 6 verified skills, projects, education | 
  | **Recruiter** | `recruiter@techcorp.com` | `Password@123` | TechCorp Innovations recruiter, active job listing | 
- | **Admin** | `admin@talentai.edu` | `Password@123` | Placement Cell TPO Admin | 
+
+> **Security Notice**: Administrative / Superadmin accounts are **never** pre-seeded with public credentials. To provision an administrator account, configure `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` in your private `.env` or deployment environment variables.
 
 ---
 

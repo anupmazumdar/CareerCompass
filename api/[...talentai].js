@@ -294,9 +294,9 @@ app.use('/api/admin', adminRateLimiter);
 
 const DEFAULT_SUPERADMIN = {
   name: process.env.SUPERADMIN_NAME || 'TalentAI Admin',
-  username: (process.env.SUPERADMIN_USERNAME || 'admin').toLowerCase(),
-  email: (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase(),
-  password: process.env.SUPERADMIN_PASSWORD || 'Admin@123'
+  username: (process.env.SUPERADMIN_USERNAME || '').toLowerCase(),
+  email: (process.env.SUPERADMIN_EMAIL || '').toLowerCase(),
+  password: process.env.SUPERADMIN_PASSWORD || ''
 };
 
 // In-memory storage (backed by cloud when available)
@@ -514,14 +514,25 @@ function ensureDataInitialized() {
 }
 
 async function ensureSuperAdminAccount() {
-  if (!DEFAULT_SUPERADMIN.password) {
-    return;
+  // Purge any publicly known default or legacy accounts from memory and cloud storage
+  const publicEmails = ['admin@talentai.me', 'admin@talentai.edu', 'anupmazumdar987@gmail.com'];
+  let purgeCount = 0;
+  for (const pEmail of publicEmails) {
+    let idx = -1;
+    while ((idx = users.findIndex(u => u.email && u.email.toLowerCase() === pEmail)) !== -1) {
+      users.splice(idx, 1);
+      purgeCount++;
+    }
+  }
+  if (purgeCount > 0) {
+    await saveUsers();
+    console.log(`🔒 Purged ${purgeCount} public/legacy admin account(s) from users`);
   }
 
-  // Purge any legacy personal accounts
-  let legacyIndex = -1;
-  while ((legacyIndex = users.findIndex(u => u.email && u.email.toLowerCase() === 'anupmazumdar987@gmail.com')) !== -1) {
-    users.splice(legacyIndex, 1);
+  // Admin account is NEVER pre-seeded with public fallback credentials
+  if (!DEFAULT_SUPERADMIN.email || !DEFAULT_SUPERADMIN.password || publicEmails.includes(DEFAULT_SUPERADMIN.email.toLowerCase())) {
+    console.log('🔒 Default/public admin credentials blocked from seeding');
+    return;
   }
 
   const existingAdmin = users.find(u =>

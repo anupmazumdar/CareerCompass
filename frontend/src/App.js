@@ -913,21 +913,10 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
             />
           )}
 
-          {authMode === 'login' && (
+          {authMode === 'login' && authUserType !== 'superadmin' && (
             <div className="pt-2 border-t border-slate-700/60 text-xs">
-              <p className="text-slate-400 mb-1.5 font-medium text-[11px]">Quick Credentials Fill:</p>
+              <p className="text-slate-400 mb-1.5 font-medium text-[11px]">Evaluation Demo Accounts:</p>
               <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'admin@talentai.me', password: 'Admin@123' }));
-                    setAuthUserType('superadmin');
-                    setError('');
-                  }}
-                  className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded text-[11px] font-medium transition-colors"
-                >
-                  🛡️ Admin
-                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -935,9 +924,9 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                     setAuthUserType('candidate');
                     setError('');
                   }}
-                  className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-medium transition-colors"
+                  className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-medium transition-colors flex items-center gap-1"
                 >
-                  🎓 Candidate
+                  🎓 Candidate Demo
                 </button>
                 <button
                   type="button"
@@ -946,9 +935,9 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                     setAuthUserType('recruiter');
                     setError('');
                   }}
-                  className="px-2 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 rounded text-[11px] font-medium transition-colors"
+                  className="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 rounded text-[11px] font-medium transition-colors flex items-center gap-1"
                 >
-                  💼 Recruiter
+                  💼 Recruiter Demo
                 </button>
               </div>
             </div>

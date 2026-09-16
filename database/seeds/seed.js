@@ -110,23 +110,20 @@ function seedDatabase() {
         // 3. Demo accounts
         const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
 
-        // Purge legacy personal email
-        await run('DELETE FROM users WHERE email = ?', ['anupmazumdar987@gmail.com']);
+        // Purge public/default admin emails
+        await run('DELETE FROM users WHERE email IN (?, ?, ?)', ['admin@talentai.me', 'admin@talentai.edu', 'anupmazumdar987@gmail.com']);
 
-        // Superadmin (Project Owner)
-        const superadminEmail = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
-        const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'Admin@123';
-        const superadminHash = await bcrypt.hash(superadminPassword, 10);
-        await run(
-          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,
-          [superadminEmail, superadminHash, process.env.SUPERADMIN_NAME || 'TalentAI Admin', '+91 9876543210']
-        );
-
-        // Admin
-        await run(
-          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,
-          ['admin@talentai.edu', defaultPasswordHash, 'Dr. TPO Administrator', '+91 9876543210']
-        );
+        // Superadmin (Project Owner) - ONLY created if explicitly configured in environment with non-default credentials
+        const superadminEmail = (process.env.SUPERADMIN_EMAIL || '').toLowerCase().trim();
+        const superadminPassword = process.env.SUPERADMIN_PASSWORD || '';
+        const blockedEmails = ['admin@talentai.me', 'admin@talentai.edu', 'anupmazumdar987@gmail.com'];
+        if (superadminEmail && superadminPassword && !blockedEmails.includes(superadminEmail)) {
+          const superadminHash = await bcrypt.hash(superadminPassword, 10);
+          await run(
+            `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,
+            [superadminEmail, superadminHash, process.env.SUPERADMIN_NAME || 'TalentAI Admin', '+91 9876543210']
+          );
+        }
 
         // Recruiter
         await run(

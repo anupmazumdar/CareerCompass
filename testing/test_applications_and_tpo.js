@@ -36,8 +36,8 @@ async function runTests() {
     assert.ok(studentToken, 'Should receive student JWT token');
     console.log('✅ Student registered and authenticated');
 
-    // Admin token directly signed for seeded superadmin
-    const adminEmail = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
+    // Admin token directly signed for test superadmin
+    const adminEmail = (process.env.SUPERADMIN_EMAIL || 'admin@test.local').toLowerCase();
     const adminToken = jwt.sign(
       { userId: 1, email: adminEmail, userType: 'superadmin', role: 'superadmin' },
       JWT_SECRET,

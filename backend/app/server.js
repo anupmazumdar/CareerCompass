@@ -115,12 +115,17 @@ app.use(globalErrorHandler);
 // 6. Server Initialization
 async function ensureAdminUser() {
   try {
-    // Purge legacy personal email
-    await db.run('DELETE FROM users WHERE email = ?', ['anupmazumdar987@gmail.com']);
+    // Purge publicly known default or legacy personal admin emails
+    await db.run('DELETE FROM users WHERE email IN (?, ?, ?)', ['admin@talentai.me', 'admin@talentai.edu', 'anupmazumdar987@gmail.com']);
 
-    const email = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
+    const email = (process.env.SUPERADMIN_EMAIL || '').toLowerCase().trim();
+    const password = process.env.SUPERADMIN_PASSWORD || '';
+    if (!email || !password || ['admin@talentai.me', 'admin@talentai.edu', 'anupmazumdar987@gmail.com'].includes(email)) {
+      logger.info('🔒 Default/public admin credentials blocked from seeding. Superadmin must be configured with private credentials.');
+      return;
+    }
+
     const existing = await db.get('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL', [email]);
-    const password = process.env.SUPERADMIN_PASSWORD || 'Admin@123';
     const { hashPassword } = require('./core/authentication/auth');
     const hash = await hashPassword(password);
 
