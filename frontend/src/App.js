@@ -1139,8 +1139,380 @@ function SubscriptionModal({ setShowSubscriptionModal, setSubscription, setUserT
   );
 }
 
+// ==================== CREATE OPPORTUNITY MODAL ====================
+function CreateOpportunityModal({ isOpen, onClose, onCreated, authState }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    company: authState?.user?.company || '',
+    location: 'Bangalore, India',
+    workType: 'remote',
+    employmentType: 'full-time',
+    experienceLevel: 'entry',
+    minSalary: '',
+    maxSalary: '',
+    deadline: '',
+    requiredSkills: '',
+    description: ''
+  });
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [customSkill, setCustomSkill] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const commonSkills = [
+    'React', 'Node.js', 'Python', 'TypeScript', 'JavaScript', 'SQL',
+    'AWS', 'Docker', 'Machine Learning', 'Next.js', 'Java', 'Figma',
+    'TailwindCSS', 'GraphQL', 'Express', 'MongoDB', 'System Design'
+  ];
+
+  if (!isOpen) return null;
+
+  const toggleSkill = (skill) => {
+    if (selectedSkills.includes(skill)) {
+      setSelectedSkills(selectedSkills.filter(s => s !== skill));
+    } else {
+      setSelectedSkills([...selectedSkills, skill]);
+    }
+  };
+
+  const addCustomSkill = (e) => {
+    e?.preventDefault();
+    const s = customSkill.trim();
+    if (s && !selectedSkills.includes(s)) {
+      setSelectedSkills([...selectedSkills, s]);
+      setCustomSkill('');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const freeTextSkills = formData.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
+    const allSkills = Array.from(new Set([...selectedSkills, ...freeTextSkills]));
+
+    if (!formData.title.trim()) {
+      setError('Job Title is required');
+      return;
+    }
+    if (!formData.company.trim()) {
+      setError('Company Name is required');
+      return;
+    }
+    if (!formData.location.trim()) {
+      setError('Location is required (e.g. Bangalore, India or Remote)');
+      return;
+    }
+    if (allSkills.length === 0) {
+      setError('Please add at least one required skill');
+      return;
+    }
+    if (!formData.description.trim()) {
+      setError('Job Description is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/opportunities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authState?.token}`
+        },
+        body: JSON.stringify({
+          title: formData.title.trim(),
+          company: formData.company.trim(),
+          location: formData.location.trim(),
+          workType: formData.workType,
+          employmentType: formData.employmentType,
+          experienceLevel: formData.experienceLevel,
+          minSalary: formData.minSalary ? Number(formData.minSalary) : null,
+          maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
+          deadline: formData.deadline || null,
+          requiredSkills: allSkills,
+          description: formData.description.trim()
+        })
+      });
+
+      const data = await parseApiJson(res);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || data.message || 'Failed to create opportunity. Ensure you are signed in as recruiter or admin.');
+      }
+
+      if (onCreated) {
+        onCreated(data.opportunity || data.data);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Create opportunity error:', err);
+      setError(err.message || 'Unable to publish opportunity');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-2xl w-full p-5 md:p-6 shadow-2xl my-auto text-white max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-950/40">
+              <Briefcase size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg md:text-xl font-bold">Post New Live Opportunity</h2>
+              <p className="text-xs text-slate-400">Publish a live opening for student matching & applications</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-red-950/50 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
+            <AlertTriangle size={15} className="flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Job Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.title}
+                onChange={e => setFormData({ ...formData, title: e.target.value })}
+                placeholder="e.g. Senior Frontend Engineer"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Company Name <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.company}
+                onChange={e => setFormData({ ...formData, company: e.target.value })}
+                placeholder="e.g. Google, Microsoft, TechCorp"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Location <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.location}
+                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g. Bangalore, India or Remote"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Work Type</label>
+              <select
+                value={formData.workType}
+                onChange={e => setFormData({ ...formData, workType: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="remote">🌐 Remote</option>
+                <option value="hybrid">⚡ Hybrid</option>
+                <option value="onsite">🏢 Onsite</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Employment Type</label>
+              <select
+                value={formData.employmentType}
+                onChange={e => setFormData({ ...formData, employmentType: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="full-time">Full-time</option>
+                <option value="internship">Internship</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Experience Level</label>
+              <select
+                value={formData.experienceLevel}
+                onChange={e => setFormData({ ...formData, experienceLevel: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="entry">Entry Level (0-2 yrs)</option>
+                <option value="mid">Mid Level (2-5 yrs)</option>
+                <option value="senior">Senior Level (5+ yrs)</option>
+                <option value="lead">Lead / Principal</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Salary Range (Min - Max ₹)</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <input
+                  type="number"
+                  value={formData.minSalary}
+                  onChange={e => setFormData({ ...formData, minSalary: e.target.value })}
+                  placeholder="Min ₹"
+                  className="w-full px-2.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+                />
+                <input
+                  type="number"
+                  value={formData.maxSalary}
+                  onChange={e => setFormData({ ...formData, maxSalary: e.target.value })}
+                  placeholder="Max ₹"
+                  className="w-full px-2.5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Application Deadline</label>
+              <input
+                type="date"
+                value={formData.deadline}
+                onChange={e => setFormData({ ...formData, deadline: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-300">
+                Required Skills <span className="text-red-400">*</span>
+              </label>
+              <span className="text-[11px] text-slate-400">Click chips to add or enter below</span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 mb-2 max-h-24 overflow-y-auto p-1.5 bg-slate-950/40 rounded-xl border border-slate-800">
+              {commonSkills.map(skill => {
+                const isSelected = selectedSkills.includes(skill);
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => toggleSkill(skill)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                    }`}
+                  >
+                    {isSelected ? <Check size={12} /> : <Plus size={12} />}
+                    <span>{skill}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customSkill}
+                onChange={e => setCustomSkill(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
+                placeholder="Type additional skill and click Add..."
+                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+              />
+              <button
+                type="button"
+                onClick={addCustomSkill}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-xs font-semibold transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            {selectedSkills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="text-[11px] text-slate-400 self-center mr-1">Selected:</span>
+                {selectedSkills.map(skill => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-900/60 text-indigo-300 border border-indigo-700/60"
+                  >
+                    <span>{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSkill(skill)}
+                      className="hover:text-red-400 ml-0.5"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Job Description & Responsibilities <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe key responsibilities, role expectations, perks, and requirements..."
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500 leading-relaxed"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs md:text-sm font-semibold transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  <span>Publish Live Opportunity</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ==================== OPPORTUNITY DISCOVERY MODULE ====================
-function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, setStage }) {
+function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, setStage, setUserType }) {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1149,6 +1521,15 @@ function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, se
   const [minMatchFilter, setMinMatchFilter] = useState(0);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [actionFeedback, setActionFeedback] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const isRecruiterOrAdmin = Boolean(
+    authState?.user?.userType === 'recruiter' ||
+    authState?.user?.userType === 'superadmin' ||
+    authState?.user?.role === 'admin' ||
+    authState?.user?.role === 'recruiter' ||
+    (authState?.user?.name && authState.user.name.toLowerCase().includes('admin'))
+  );
 
   const fetchOpportunities = useCallback(async () => {
     setLoading(true);
@@ -1183,6 +1564,36 @@ function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, se
   useEffect(() => {
     fetchOpportunities();
   }, [fetchOpportunities]);
+
+  const handleOpportunityCreated = (newOpp) => {
+    if (!newOpp) return;
+    setOpportunities(prev => [newOpp, ...prev]);
+    setActionFeedback({
+      id: 'general',
+      message: `✓ Live Opportunity "${newOpp.title}" created successfully! Candidates can now apply.`
+    });
+    setTimeout(() => setActionFeedback(null), 6000);
+  };
+
+  const handleDeleteOpportunity = async (oppId) => {
+    if (!window.confirm('Are you sure you want to delete this live opportunity?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/opportunities/${oppId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authState?.token}` }
+      });
+      const data = await parseApiJson(res);
+      if (res.ok && data.success) {
+        setOpportunities(prev => prev.filter(o => o.id !== oppId));
+        setActionFeedback({ id: 'general', message: '✓ Opportunity deleted successfully!' });
+      } else {
+        setActionFeedback({ id: 'general', message: data.error || 'Failed to delete opportunity', isError: true });
+      }
+    } catch (err) {
+      setActionFeedback({ id: 'general', message: 'Failed to delete opportunity', isError: true });
+    }
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
 
   const handleApply = async (opp) => {
     try {
@@ -1249,18 +1660,43 @@ function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, se
               Roles are dynamically ranked against your profile and resume skills using the TalentAI hybrid matching engine.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-3 text-center min-w-[90px] shadow-sm">
-              <p className="text-xs text-slate-400 font-medium">Total Roles</p>
-              <p className="text-xl font-bold text-white">{opportunities.length}</p>
-            </div>
-            <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-3 text-center min-w-[100px] shadow-sm">
-              <p className="text-xs text-emerald-400 font-medium">Strong Match</p>
-              <p className="text-xl font-bold text-emerald-300">{highMatchCount}</p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="min-h-[44px] px-4 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+              id="btn-post-opportunity"
+            >
+              <Plus size={16} />
+              <span>+ Post Live Opportunity</span>
+            </button>
+            <div className="flex items-center justify-center gap-2">
+              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center min-w-[80px] shadow-sm">
+                <p className="text-[11px] text-slate-400 font-medium">Total Roles</p>
+                <p className="text-lg font-bold text-white">{opportunities.length}</p>
+              </div>
+              <div className="bg-emerald-950/50 border border-emerald-500/40 rounded-xl p-2.5 text-center min-w-[90px] shadow-sm">
+                <p className="text-[11px] text-emerald-400 font-medium">Strong Match</p>
+                <p className="text-lg font-bold text-emerald-300">{highMatchCount}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {actionFeedback?.id === 'general' && (
+        <div className={`p-4 rounded-xl text-xs md:text-sm font-semibold flex items-center justify-between gap-3 shadow-md ${
+          actionFeedback.isError
+            ? 'bg-red-950/80 border border-red-800 text-red-200'
+            : 'bg-emerald-950/80 border border-emerald-700 text-emerald-200'
+        }`}>
+          <span>{actionFeedback.message}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-white p-1">
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 space-y-3 shadow-md">
@@ -1488,6 +1924,16 @@ function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, se
                     <span>Apply</span>
                     <ExternalLink size={12} />
                   </button>
+                  {isRecruiterOrAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteOpportunity(opp.id); }}
+                      className="min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/40 transition-all flex items-center gap-1"
+                      title="Delete this live opportunity"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1640,6 +2086,14 @@ function OpportunityDiscovery({ candidateData, authState, setActivePortalTab, se
           </div>
         </div>
       )}
+
+      {/* Create Opportunity Modal for Recruiters and Admins */}
+      <CreateOpportunityModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={handleOpportunityCreated}
+        authState={authState}
+      />
     </div>
   );
 }
@@ -2131,13 +2585,35 @@ function CandidatePortal({ setUserType, subscription, authState, logout }) {
               Welcome back, {candidateData.name || 'Student'} • Explore jobs, track applications, and level up your skills.
             </p>
           </div>
-          <button
-            onClick={logout}
-            className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50 md:w-auto md:text-base self-start md:self-auto"
-          >
-            <LogOut size={16} />
-            Logout
-          </button>
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            {(authState?.user?.userType === 'superadmin' || authState?.user?.role === 'admin' || (authState?.user?.name && authState.user.name.toLowerCase().includes('admin'))) && (
+              <button
+                type="button"
+                onClick={() => setUserType && setUserType('superadmin')}
+                className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 px-3.5 py-2 text-xs md:text-sm font-semibold transition-all hover:bg-amber-500/25 shadow-sm"
+              >
+                <ShieldCheck size={16} />
+                <span>Admin Console ↵</span>
+              </button>
+            )}
+            {(authState?.user?.userType === 'recruiter' || authState?.user?.role === 'recruiter') && (
+              <button
+                type="button"
+                onClick={() => setUserType && setUserType('recruiter')}
+                className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-indigo-500/15 border border-indigo-500/40 text-indigo-300 px-3.5 py-2 text-xs md:text-sm font-semibold transition-all hover:bg-indigo-500/25 shadow-sm"
+              >
+                <Briefcase size={16} />
+                <span>Recruiter Portal ↵</span>
+              </button>
+            )}
+            <button
+              onClick={logout}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-800/50 px-4 py-2 text-sm transition-all hover:bg-slate-700/50 md:w-auto md:text-base"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Portal View Switcher Tabs */}
@@ -2193,6 +2669,7 @@ function CandidatePortal({ setUserType, subscription, authState, logout }) {
             authState={authState}
             setActivePortalTab={setActivePortalTab}
             setStage={setStage}
+            setUserType={setUserType}
           />
         </div>
       ) : activePortalTab === 'tracker' ? (
@@ -7518,19 +7995,23 @@ function SuperAdminDashboard({ authState, logout, setUserType }) {
       {/* Tabs */}
       <div className="max-w-7xl mx-auto">
         <div className="mb-5 flex flex-wrap gap-2">
-          {['recruiters', 'candidates', 'questions', 'resources', 'chat', 'analytics'].map(tab => (
+          {['recruiters', 'candidates', 'opportunities', 'questions', 'resources', 'chat', 'analytics'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`min-h-[44px] px-5 py-2 rounded-xl font-semibold text-sm md:text-base capitalize transition-all ${
                 activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
               }`}>
               <span className="inline-flex items-center gap-2 capitalize">
-                {tab === 'analytics' ? 'TPO Analytics' : tab}
+                {tab === 'analytics' ? 'TPO Analytics' : tab === 'opportunities' ? 'Opportunities' : tab}
                 {tab === 'chat' && <ChatUnreadBadge authState={authState} />}
               </span>
             </button>
           ))}
           <button onClick={fetchAll} className="min-h-[44px] px-4 py-2 bg-slate-800/50 rounded-xl text-sm md:text-base text-slate-400 hover:bg-slate-700/50 transition-all md:ml-auto">↻ Refresh</button>
         </div>
+
+        {activeTab === 'opportunities' && (
+          <AdminOpportunitiesTab authState={authState} recruiterMode={false} />
+        )}
 
         {activeTab === 'recruiters' && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
@@ -8049,6 +8530,221 @@ function SuperAdminResourcePanel({ authState }) {
   );
 }
 
+// ==================== ADMIN & RECRUITER OPPORTUNITIES PANEL ====================
+function AdminOpportunitiesTab({ authState, recruiterMode = false }) {
+  const [opportunities, setOpportunities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState(null);
+
+  const fetchOpps = useCallback(async () => {
+    setLoading(true);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authState?.token) headers['Authorization'] = `Bearer ${authState.token}`;
+
+      const res = await fetch(`${API_URL}/api/opportunities`, { headers });
+      const data = await parseApiJson(res);
+      if (data.success) {
+        let opps = data.opportunities || [];
+        if (recruiterMode && authState?.user?.company) {
+          const userComp = authState.user.company.toLowerCase().trim();
+          opps = [...opps].sort((a, b) => {
+            const aMatch = (a.company || '').toLowerCase().includes(userComp);
+            const bMatch = (b.company || '').toLowerCase().includes(userComp);
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+          });
+        }
+        setOpportunities(opps);
+      }
+    } catch (e) {
+      console.error('Failed to load opportunities:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [authState?.token, recruiterMode, authState?.user?.company]);
+
+  useEffect(() => {
+    fetchOpps();
+  }, [fetchOpps]);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this opportunity? All linked candidate applications will be removed.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/opportunities/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authState?.token}` }
+      });
+      const data = await parseApiJson(res);
+      if (res.ok && data.success) {
+        setOpportunities(prev => prev.filter(o => o.id !== id));
+        setActionFeedback({ id: 'msg', message: '✓ Opportunity and linked applications deleted successfully' });
+      } else {
+        setActionFeedback({ id: 'msg', message: data.error || 'Failed to delete opportunity', isError: true });
+      }
+    } catch (e) {
+      setActionFeedback({ id: 'msg', message: 'Failed to delete opportunity', isError: true });
+    }
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  const filtered = opportunities.filter(o =>
+    (o.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.company || '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.location || '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.workType || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 md:p-6 bg-slate-900/70 border border-slate-700/80 rounded-2xl shadow-xl backdrop-blur-xl">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 mb-2">
+            <Sparkles size={14} className="text-emerald-400" />
+            <span>Live Recruitment Openings</span>
+          </div>
+          <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+            <Briefcase className="text-emerald-400" size={24} />
+            <span>{recruiterMode ? 'Job Openings & Role Postings' : 'Platform Opportunities Management'}</span>
+          </h2>
+          <p className="text-xs md:text-sm text-slate-400 mt-1">
+            {recruiterMode
+              ? `Manage hiring roles for ${authState?.user?.company || 'your organization'} with live candidate applications.`
+              : 'Superadmin management: create, publish, inspect, and remove job opportunities across all registered companies.'}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by role, company, city..."
+            className="px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs md:text-sm text-white focus:outline-none focus:border-indigo-500 placeholder:text-slate-500 min-w-[200px]"
+          />
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="min-h-[44px] px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] flex-shrink-0"
+            id="btn-post-new-opp"
+          >
+            <Plus size={16} />
+            <span>+ Post New Opportunity</span>
+          </button>
+        </div>
+      </div>
+
+      {actionFeedback && (
+        <div className={`p-4 rounded-xl text-xs md:text-sm font-semibold flex items-center justify-between gap-3 shadow-md ${
+          actionFeedback.isError ? 'bg-red-950/80 border border-red-800 text-red-200' : 'bg-emerald-950/80 border border-emerald-700 text-emerald-200'
+        }`}>
+          <span>{actionFeedback.message}</span>
+          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-white p-1">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="p-16 text-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="p-12 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 space-y-3">
+          <p className="text-4xl">💼</p>
+          <h3 className="font-bold text-white text-base">No Opportunities Found</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            No live opportunities match your search. Click "+ Post New Opportunity" above to publish your first hiring opening.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            <span>Post First Opportunity</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(opp => (
+            <div key={opp.id} className="p-5 bg-slate-900/70 border border-slate-700/80 hover:border-indigo-500/50 rounded-2xl shadow-lg flex flex-col justify-between transition-all group">
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block truncate">{opp.company}</span>
+                    <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors truncate">{opp.title}</h3>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 capitalize flex-shrink-0">
+                    {opp.workType === 'remote' ? '🌐 Remote' : opp.workType === 'hybrid' ? '⚡ Hybrid' : '🏢 Onsite'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mb-2">
+                  <span>📍 {opp.location}</span>
+                  {opp.deadline && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 text-slate-500">
+                        <Clock3 size={11} />
+                        <span>{new Date(opp.deadline).toLocaleDateString()}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <p className="text-xs text-slate-300 line-clamp-2 mb-3 leading-relaxed">{opp.description}</p>
+
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Required Skills:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(opp.requiredSkills || []).slice(0, 4).map((s, idx) => (
+                      <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                        {s}
+                      </span>
+                    ))}
+                    {(opp.requiredSkills || []).length > 4 && (
+                      <span className="text-[10px] px-1.5 py-0.5 text-slate-500 font-medium">
+                        +{opp.requiredSkills.length - 4} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500">ID #{opp.id}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(opp.id)}
+                  className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-xl border border-red-800/40 transition-colors flex items-center gap-1 font-medium"
+                >
+                  <Trash2 size={13} />
+                  <span>Delete Role</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <CreateOpportunityModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={(newOpp) => {
+          if (!newOpp) return;
+          setOpportunities(prev => [newOpp, ...prev]);
+          setActionFeedback({ id: 'msg', message: `✓ "${newOpp.title}" published live successfully!` });
+          setTimeout(() => setActionFeedback(null), 5000);
+        }}
+        authState={authState}
+      />
+    </div>
+  );
+}
+
 // ==================== RECRUITER DASHBOARD ====================
 function RecruiterDashboard({ setUserType, subscription, setShowSubscriptionModal, authState, logout }) {
   const [activeTab, setActiveTab] = useState('candidates'); // 'candidates' | 'admin'
@@ -8129,6 +8825,18 @@ function RecruiterDashboard({ setUserType, subscription, setShowSubscriptionModa
             Candidates
           </button>
           <button
+            id="tab-opportunities"
+            onClick={() => setActiveTab('opportunities')}
+            className={`min-h-[44px] px-5 py-2.5 rounded-lg font-semibold text-sm md:text-base transition-all flex items-center gap-2 ${
+              activeTab === 'opportunities'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+          >
+            <Briefcase size={16} />
+            Job Openings
+          </button>
+          <button
             id="tab-admin"
             onClick={() => setActiveTab('admin')}
             className={`min-h-[44px] px-5 py-2.5 rounded-lg font-semibold text-sm md:text-base transition-all flex items-center gap-2 ${
@@ -8165,6 +8873,8 @@ function RecruiterDashboard({ setUserType, subscription, setShowSubscriptionModa
             title="Secure Chat With Superadmin"
             subtitle="Share text messages with the superadmin. Each message is stored in a tamper-evident hash chain."
           />
+        ) : activeTab === 'opportunities' ? (
+          <AdminOpportunitiesTab authState={authState} recruiterMode={true} />
         ) : (
           <>
             {/* Stats */}

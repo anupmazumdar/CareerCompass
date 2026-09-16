@@ -1100,7 +1100,11 @@ function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const currentUser = users.find(u => u.id === decoded.userId || u.email === decoded.email);
-    if (!currentUser || !hasPlatformAccess(currentUser)) {
+    if (currentUser && !hasPlatformAccess(currentUser)) {
+      return res.status(403).json({ error: 'Access revoked by admin' });
+    }
+    const isSuperAdmin = (decoded.userType === 'superadmin' || decoded.role === 'superadmin' || decoded.userType === 'admin');
+    if (!currentUser && !isSuperAdmin) {
       return res.status(403).json({ error: 'Access revoked by admin' });
     }
     req.user = decoded;
@@ -1905,9 +1909,10 @@ app.get('/api/opportunities/:id', opportunityLimiter, (req, res) => {
 // POST /api/opportunities — Create opportunity (recruiter / superadmin)
 app.post('/api/opportunities', authenticateToken, async (req, res) => {
   try {
-    const allowed = ['recruiter', 'superadmin'];
-    if (!allowed.includes(req.user?.userType)) {
-      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    const allowed = ['recruiter', 'superadmin', 'admin'];
+    const userRole = (req.user?.userType || req.user?.role || '').toLowerCase();
+    if (!allowed.includes(userRole)) {
+      return res.status(403).json({ error: 'Recruiter or admin access required' });
     }
 
     const title = String(req.body.title || '').trim();
@@ -1974,9 +1979,10 @@ app.post('/api/opportunities', authenticateToken, async (req, res) => {
 // PUT /api/opportunities/:id — Update opportunity
 app.put('/api/opportunities/:id', authenticateToken, async (req, res) => {
   try {
-    const allowed = ['recruiter', 'superadmin'];
-    if (!allowed.includes(req.user?.userType)) {
-      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    const allowed = ['recruiter', 'superadmin', 'admin'];
+    const userRole = (req.user?.userType || req.user?.role || '').toLowerCase();
+    if (!allowed.includes(userRole)) {
+      return res.status(403).json({ error: 'Recruiter or admin access required' });
     }
 
     const id = parseInt(req.params.id);
@@ -2034,9 +2040,10 @@ app.put('/api/opportunities/:id', authenticateToken, async (req, res) => {
 // DELETE /api/opportunities/:id — Delete opportunity (with CASCADE delete for applications)
 app.delete('/api/opportunities/:id', authenticateToken, async (req, res) => {
   try {
-    const allowed = ['recruiter', 'superadmin'];
-    if (!allowed.includes(req.user?.userType)) {
-      return res.status(403).json({ error: 'Recruiter or superadmin access required' });
+    const allowed = ['recruiter', 'superadmin', 'admin'];
+    const userRole = (req.user?.userType || req.user?.role || '').toLowerCase();
+    if (!allowed.includes(userRole)) {
+      return res.status(403).json({ error: 'Recruiter or admin access required' });
     }
 
     const id = parseInt(req.params.id);

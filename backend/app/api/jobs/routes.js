@@ -147,12 +147,26 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/jobs (Recruiter creates job)
-router.post('/', authenticateToken, requireRole('recruiter'), async (req, res, next) => {
+// POST /api/jobs (Recruiter or Admin creates job)
+router.post('/', authenticateToken, requireRole('recruiter', 'admin'), async (req, res, next) => {
   try {
-    const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-    if (!recruiter || !recruiter.company_id) {
-      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You must be associated with a company to post jobs' });
+    let companyId = null;
+    let recruiterProfileId = null;
+
+    if (req.user.role === 'recruiter') {
+      const recruiter = await recruiterRepo.findByUserId(req.user.userId);
+      if (!recruiter || !recruiter.company_id) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You must be associated with a company to post jobs' });
+      }
+      companyId = recruiter.company_id;
+      recruiterProfileId = recruiter.id;
+    } else {
+      const companyName = req.body.company || req.body.companyName || 'TalentAI Partner';
+      let comp = await recruiterRepo.findCompanyByName(companyName);
+      if (!comp) {
+        comp = await recruiterRepo.createCompany({ name: companyName, verificationStatus: 'verified' });
+      }
+      companyId = comp?.id || 1;
     }
 
     const {
@@ -166,8 +180,8 @@ router.post('/', authenticateToken, requireRole('recruiter'), async (req, res, n
     }
 
     const job = await jobRepo.create({
-      companyId: recruiter.company_id,
-      recruiterProfileId: recruiter.id,
+      companyId,
+      recruiterProfileId,
       title,
       description,
       department,
