@@ -2,7 +2,8 @@
     "name": "talentai-recruitment",
     "version": "1.0.0",
     "scripts": {
-        "install": "npm install --prefix backend && npm install --prefix frontend",
+        "install:all": "npm install --prefix backend && npm install --prefix frontend",
+        "postinstall": "npm install --prefix frontend",
         "build": "npm run build --prefix frontend",
         "server": "node backend/app/server.js",
         "client": "npm start --prefix frontend",
@@ -15,6 +16,7 @@
         "@anthropic-ai/sdk": "^0.74.0",
         "@google-cloud/storage": "^7.14.0",
         "bcryptjs": "^3.0.3",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
         "docx": "^8.5.0",
         "dotenv": "^17.3.1",
@@ -31,7 +33,8 @@
         "pdf-parse": "^2.4.5",
         "sqlite3": "^6.0.1",
         "winston": "^3.19.0",
-        "xss-clean": "^0.1.4"
+        "xss-clean": "^0.1.4",
+        "zod": "^4.6.5"
     },
     "devDependencies": {
         "concurrently": "^8.0.0"

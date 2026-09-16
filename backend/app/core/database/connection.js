@@ -2,13 +2,26 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
 const config = require('../config');
 
-const DB_PATH = config.database.dbPath;
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_ENV);
+
+// In serverless (e.g. Vercel / AWS Lambda), the filesystem is read-only except /tmp
+let effectiveDbPath = config.database.dbPath;
+if (isServerless && !process.env.DB_PATH) {
+  effectiveDbPath = path.join(os.tmpdir(), 'talentai.db');
+}
+
+const DB_PATH = effectiveDbPath;
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+  } catch (err) {
+    console.warn(`⚠️ Warning: could not create dbDir ${dbDir}:`, err.message);
+  }
 }
 
 let dbInstance = null;

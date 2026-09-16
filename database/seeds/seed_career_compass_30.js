@@ -766,9 +766,13 @@ async function seed() {
   console.log('🎉 Seed operation finished successfully!');
 }
 
-seed()
-  .catch((err) => {
-    console.error('❌ Seeding error:', err);
-    process.exit(1);
-  })
-  .then(() => process.exit(0));
+if (require.main === module) {
+  seed()
+    .catch((err) => {
+      console.error('❌ Seeding error:', err);
+      process.exit(1);
+    })
+    .then(() => process.exit(0));
+}
+
+module.exports = { seed };

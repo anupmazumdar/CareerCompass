@@ -27,7 +27,7 @@ const helmetMiddleware = helmet({
 // 2. CORS configuration
 const corsMiddleware = cors({
   origin: (origin, callback) => {
-    if (!origin || config.cors.allowedOrigins.includes(origin) || origin.includes('localhost')) {
+    if (!origin || config.cors.allowedOrigins.includes(origin) || origin.includes('localhost') || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       callback(new Error(`CORS policy rejection: Origin ${origin} not permitted`));

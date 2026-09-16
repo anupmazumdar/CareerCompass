@@ -2,7 +2,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+let sqlite3;
+try {
+  sqlite3 = require('sqlite3').verbose();
+} catch (err) {
+  sqlite3 = require(path.resolve(__dirname, '../../backend/node_modules/sqlite3')).verbose();
+}
 
 const DATA_DIR = process.env.DB_DIR || path.resolve(__dirname, '../../data');
 if (!fs.existsSync(DATA_DIR)) {
@@ -71,13 +76,13 @@ async function applyIncrementalMigrations(db) {
   await addColumnIfNotExists(db, 'applications', 'reminder_date DATETIME', 'reminder_date');
 }
 
-function runMigrations() {
-  console.log(`🔄 Applying migrations to: ${DB_PATH}`);
+function runMigrations(targetPath = DB_PATH) {
+  console.log(`🔄 Applying migrations to: ${targetPath}`);
   const schemaPath = path.resolve(__dirname, '../schema/schema.sql');
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
 
   return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(DB_PATH, async (err) => {
+    const db = new sqlite3.Database(targetPath, async (err) => {
       if (err) return reject(err);
 
       db.exec(schemaSql, async (execErr) => {
