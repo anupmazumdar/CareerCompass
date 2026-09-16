@@ -146,7 +146,27 @@ async function ensureAdminUser() {
   }
 }
 
+async function ensureDbReady() {
+  try {
+    const usersTable = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    if (!usersTable) {
+      logger.info('🔄 Initializing SQLite database schema...');
+      const { runMigrations } = require(path.resolve(__dirname, '../../database/migrations/migrate'));
+      await runMigrations(db.DB_PATH);
+    }
+    const oppCount = await db.get('SELECT COUNT(*) as count FROM opportunities');
+    if (!oppCount || oppCount.count === 0) {
+      logger.info('🌱 Seeding 30 opportunities & demo student profile...');
+      const { seed } = require(path.resolve(__dirname, '../../database/seeds/seed_career_compass_30'));
+      await seed();
+    }
+  } catch (err) {
+    logger.warn(`⚠️ ensureDbReady notice: ${err.message}`);
+  }
+}
+
 async function startServer(port = config.port) {
+  await ensureDbReady();
   await ensureAdminUser();
   return new Promise((resolve) => {
     const server = app.listen(port, () => {
