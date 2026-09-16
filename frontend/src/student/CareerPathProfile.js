@@ -34,6 +34,7 @@ export function CareerPathProfile() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview, education, skills, projects, certifications, resume, goals
   const [toast, setToast] = useState(null);
+  const [error, setError] = useState(null);
 
   // Modals / Form States
   const [personalForm, setPersonalForm] = useState({
@@ -111,13 +112,14 @@ export function CareerPathProfile() {
   const loadProfileData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [profRes, skillsRes] = await Promise.all([
-        api.get('/api/students/me').catch(() => ({ data: null })),
-        api.get('/api/skills').catch(() => ({ data: [] }))
+        api.get('/api/students/me').catch(() => ({ success: false, data: null })),
+        api.get('/api/skills').catch(() => ({ success: false, data: [] }))
       ]);
 
-      if (profRes && profRes.data) {
-        const p = profRes.data.data || profRes.data;
+      if (profRes && profRes.success && profRes.data) {
+        const p = profRes.data?.data || profRes.data;
         setProfile(p);
         setPersonalForm({
           headline: p.headline || '',
@@ -141,16 +143,22 @@ export function CareerPathProfile() {
         });
       }
 
-      if (skillsRes && skillsRes.data) {
+      if (skillsRes && skillsRes.success && skillsRes.data) {
         const list = Array.isArray(skillsRes.data) ? skillsRes.data : (skillsRes.data.skills || []);
         setAvailableSkills(list);
         if (list.length > 0) {
           setSkillInput(prev => ({ ...prev, skillId: list[0].id }));
         }
       }
+
+      if (!profRes?.success && !skillsRes?.success) {
+        throw new Error('Unable to load student profile');
+      }
     } catch (err) {
       console.error('Failed to load profile:', err);
-      showNotification('Unable to load student profile', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Unable to load student profile';
+      setError(msg);
+      showNotification(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -180,12 +188,13 @@ export function CareerPathProfile() {
         achievements: personalForm.achievements || null
       };
       const res = await api.put('/api/students/me', payload);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Profile and academic details updated successfully');
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to update profile details', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to update profile details';
+      showNotification(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -195,8 +204,8 @@ export function CareerPathProfile() {
     e.preventDefault();
     try {
       const res = await api.post('/api/students/me/education', eduForm);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         setShowEduModal(false);
         setEduForm({
           institution: '',
@@ -209,19 +218,21 @@ export function CareerPathProfile() {
         showNotification('Education entry added');
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to add education', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to add education';
+      showNotification(msg, 'error');
     }
   };
 
   const handleDeleteEducation = async (id) => {
     try {
       const res = await api.delete(`/api/students/me/education/${id}`);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Education entry deleted');
       }
     } catch (err) {
-      showNotification('Failed to remove education', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to remove education';
+      showNotification(msg, 'error');
     }
   };
 
@@ -237,26 +248,28 @@ export function CareerPathProfile() {
         ...projForm,
         technologies: techs
       });
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         setShowProjModal(false);
         setProjForm({ title: '', description: '', technologies: '', project_url: '', github_url: '' });
         showNotification('Project showcase added');
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to add project', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to add project';
+      showNotification(msg, 'error');
     }
   };
 
   const handleDeleteProject = async (id) => {
     try {
       const res = await api.delete(`/api/students/me/projects/${id}`);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Project removed');
       }
     } catch (err) {
-      showNotification('Failed to remove project', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to remove project';
+      showNotification(msg, 'error');
     }
   };
 
@@ -264,26 +277,28 @@ export function CareerPathProfile() {
     e.preventDefault();
     try {
       const res = await api.post('/api/students/me/certifications', certForm);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         setShowCertModal(false);
         setCertForm({ title: '', issuing_organization: '', issue_date: '', credential_id: '', credential_url: '' });
         showNotification('Certification recorded');
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to add certification', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to add certification';
+      showNotification(msg, 'error');
     }
   };
 
   const handleDeleteCertification = async (id) => {
     try {
       const res = await api.delete(`/api/students/me/certifications/${id}`);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Certification deleted');
       }
     } catch (err) {
-      showNotification('Failed to remove certification', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to remove certification';
+      showNotification(msg, 'error');
     }
   };
 
@@ -291,24 +306,26 @@ export function CareerPathProfile() {
     e.preventDefault();
     try {
       const res = await api.post('/api/students/me/skills', skillInput);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Skill added to inventory');
       }
     } catch (err) {
-      showNotification('Failed to add skill', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to add skill';
+      showNotification(msg, 'error');
     }
   };
 
   const handleRemoveSkill = async (skillId) => {
     try {
       const res = await api.delete(`/api/students/me/skills/${skillId}`);
-      if (res && res.data) {
-        setProfile(res.data.data || res.data);
+      if (res && res.success) {
+        setProfile(res.data?.data || res.data);
         showNotification('Skill removed from profile');
       }
     } catch (err) {
-      showNotification('Failed to remove skill', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to remove skill';
+      showNotification(msg, 'error');
     }
   };
 
@@ -332,14 +349,14 @@ export function CareerPathProfile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      if (res.data && res.data.data) {
-        setResumeAnalysis(res.data.data);
+      if (res && res.success && res.data) {
+        setResumeAnalysis(res.data?.data || res.data);
         showNotification('Resume verified, parsed, and skills extracted!');
         // Reload profile to refresh completeness and resume list
         loadProfileData();
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to process resume file';
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to process resume file';
       showNotification(msg, 'error');
     } finally {
       setUploadingResume(false);
@@ -349,24 +366,26 @@ export function CareerPathProfile() {
   const handleSetPrimaryResume = async (resumeId) => {
     try {
       const res = await api.put(`/api/students/me/resumes/${resumeId}/primary`);
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Primary resume updated for future applications');
         loadProfileData();
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to set primary resume', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to set primary resume';
+      showNotification(msg, 'error');
     }
   };
 
   const handleDeleteResume = async (resumeId) => {
     try {
       const res = await api.delete(`/api/students/me/resumes/${resumeId}`);
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Resume version deleted');
         loadProfileData();
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to delete resume', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to delete resume';
+      showNotification(msg, 'error');
     }
   };
 
@@ -374,14 +393,15 @@ export function CareerPathProfile() {
     e.preventDefault();
     try {
       const res = await api.post('/api/students/me/goals', goalForm);
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('New career milestone created!');
         setShowGoalModal(false);
         setGoalForm({ title: '', description: '', category: 'skill', target_date: '', status: 'in_progress' });
         loadProfileData();
       }
     } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to create goal', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to create goal';
+      showNotification(msg, 'error');
     }
   };
 
@@ -389,24 +409,26 @@ export function CareerPathProfile() {
     const nextStatus = goal.status === 'completed' ? 'in_progress' : 'completed';
     try {
       const res = await api.put(`/api/students/me/goals/${goal.id}`, { status: nextStatus });
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification(`Milestone marked as ${nextStatus.replace('_', ' ')}`);
         loadProfileData();
       }
     } catch (err) {
-      showNotification('Failed to update milestone', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to update milestone';
+      showNotification(msg, 'error');
     }
   };
 
   const handleDeleteGoal = async (goalId) => {
     try {
       const res = await api.delete(`/api/students/me/goals/${goalId}`);
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Milestone removed');
         loadProfileData();
       }
     } catch (err) {
-      showNotification('Failed to remove milestone', 'error');
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to remove milestone';
+      showNotification(msg, 'error');
     }
   };
 
@@ -444,6 +466,19 @@ export function CareerPathProfile() {
 
       {/* Main Container */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {error && (
+          <div data-testid="profile-error-alert" className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 mb-6">
+            <AlertCircle size={16} className="text-rose-600 flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-rose-700 hover:text-rose-900 underline font-semibold ml-auto"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         
         {/* Profile Header Hero Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 mb-8">

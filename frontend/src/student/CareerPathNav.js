@@ -21,16 +21,19 @@ export function CareerPathNav() {
     async function loadUser() {
       try {
         const res = await api.get('/api/students/me');
-        if (res.data && res.data.success) {
-          setStudent(res.data.data);
+        if (res && res.success) {
+          setStudent(res.data);
         }
-      } catch (_) {
+      } catch (err) {
+        console.warn('Failed to load user profile from API:', err.message);
         // Fallback to localStorage user
         const stored = localStorage.getItem(AUTH_STORAGE_KEY);
         if (stored) {
           try {
             setStudent(JSON.parse(stored).user || null);
-          } catch (_) {}
+          } catch (parseErr) {
+            console.warn('Failed to parse cached auth state:', parseErr.message);
+          }
         }
       }
     }

@@ -38,6 +38,7 @@ export function CareerPathOpportunities() {
   const [submittingApply, setSubmittingApply] = useState(false);
   const [primaryResume, setPrimaryResume] = useState(null);
 
+  const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [savedJobs, setSavedJobs] = useState(new Set());
@@ -51,10 +52,12 @@ export function CareerPathOpportunities() {
   const fetchClosingSoon = useCallback(async () => {
     try {
       const res = await api.get('/api/opportunities/closing-soon?days=21&limit=6');
-      if (res.data && res.data.success) {
-        setClosingSoonList(res.data.data || []);
+      if (res && res.success) {
+        setClosingSoonList(res.data || []);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to load closing-soon opportunities:', err.message);
+    }
   }, []);
 
   // 2. Fetch User Profile & Resumes (for quick apply)
@@ -62,21 +65,29 @@ export function CareerPathOpportunities() {
     async function loadStudentData() {
       try {
         const [resumesRes, appsRes] = await Promise.all([
-          api.get('/api/students/me/resumes').catch(() => ({ data: { data: [] } })),
-          api.get('/api/applications/my-applications').catch(() => ({ data: { data: [] } }))
+          api.get('/api/students/me/resumes').catch(err => {
+            console.warn('Failed to load resumes:', err.message);
+            return { success: false, data: [] };
+          }),
+          api.get('/api/applications/my-applications').catch(err => {
+            console.warn('Failed to load applications:', err.message);
+            return { success: false, data: [] };
+          })
         ]);
 
-        if (resumesRes.data && resumesRes.data.success && resumesRes.data.data) {
-          const resumes = resumesRes.data.data;
+        if (resumesRes && resumesRes.success && resumesRes.data) {
+          const resumes = resumesRes.data;
           const primary = resumes.find(r => r.is_primary) || resumes[0] || null;
           setPrimaryResume(primary);
         }
 
-        if (appsRes.data && appsRes.data.success && appsRes.data.data) {
-          const applied = new Set(appsRes.data.data.map(a => a.opportunity_id || a.job_id).filter(Boolean));
+        if (appsRes && appsRes.success && appsRes.data) {
+          const applied = new Set(appsRes.data.map(a => a.opportunity_id || a.job_id).filter(Boolean));
           setAppliedJobs(applied);
         }
-      } catch (_) {}
+      } catch (err) {
+        console.warn('Failed to load student data:', err.message);
+      }
     }
     loadStudentData();
     fetchClosingSoon();
@@ -86,15 +97,16 @@ export function CareerPathOpportunities() {
   const fetchOpportunities = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
       if (activeTab === 'saved') {
         const res = await api.get('/api/opportunities/saved');
-        if (res.data && res.data.success) {
-          setOpportunities(res.data.data || []);
-          setTotalCount(res.data.data.length);
+        if (res && res.success) {
+          setOpportunities(res.data || []);
+          setTotalCount(res.data?.length || 0);
           setTotalPages(1);
           setHasStudentProfile(true);
-          const savedIds = new Set(res.data.data.map(o => o.id));
+          const savedIds = new Set((res.data || []).map(o => o.id));
           setSavedJobs(savedIds);
         }
         return;
@@ -110,12 +122,12 @@ export function CareerPathOpportunities() {
       params.append('limit', 9);
 
       const res = await api.get(`/api/opportunities?${params.toString()}`);
-      if (res.data && res.data.success) {
-        const items = res.data.data || [];
+      if (res && res.success) {
+        const items = res.data || [];
         setOpportunities(items);
-        setTotalPages(res.data.totalPages || 1);
-        setTotalCount(res.data.total || 0);
-        setHasStudentProfile(Boolean(res.data.hasStudentProfile));
+        setTotalPages(res.totalPages || 1);
+        setTotalCount(res.total || 0);
+        setHasStudentProfile(Boolean(res.hasStudentProfile));
 
         const savedIds = new Set();
         items.forEach(opp => {
@@ -125,6 +137,7 @@ export function CareerPathOpportunities() {
       }
     } catch (err) {
       console.error('Failed to load opportunities:', err);
+      setError(err.message || 'Failed to load career opportunities');
       showNotification('Failed to load career opportunities', 'error');
     } finally {
       setLoading(false);
@@ -178,8 +191,8 @@ export function CareerPathOpportunities() {
       setDetailLoading(true);
       setSelectedOpportunity(null);
       const res = await api.get(`/api/opportunities/${oppId}`);
-      if (res.data && res.data.success) {
-        setSelectedOpportunity(res.data.data);
+      if (res && res.success && res.data) {
+        setSelectedOpportunity(res.data);
       }
     } catch (err) {
       showNotification('Unable to fetch opportunity breakdown', 'error');
@@ -206,7 +219,7 @@ export function CareerPathOpportunities() {
       setApplyModalOpp(null);
       setApplyCoverNote('');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to submit application';
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to submit application';
       showNotification(msg, 'error');
     } finally {
       setSubmittingApply(false);
@@ -239,6 +252,16 @@ export function CareerPathOpportunities() {
         }`}>
           {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           {toast.message}
+        </div>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <div data-testid="opportunities-error-alert" className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
         </div>
       )}
 

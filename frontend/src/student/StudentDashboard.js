@@ -13,14 +13,16 @@ export function StudentDashboard() {
     async function loadDashboardData() {
       try {
         const [recRes, appRes, profRes] = await Promise.all([
-          api.get('/api/recommendations/jobs').catch(() => ({ data: [] })),
-          api.get('/api/applications/my-applications').catch(() => ({ data: [] })),
-          api.get('/api/students/me').catch(() => ({ data: null }))
+          api.get('/api/recommendations/jobs').catch(() => ({ success: false, data: [] })),
+          api.get('/api/applications/my-applications').catch(() => ({ success: false, data: [] })),
+          api.get('/api/students/me').catch(() => ({ success: false, data: null }))
         ]);
 
-        if (recRes.data) setRecommendations(recRes.data.slice(0, 5));
-        if (appRes.data) setApplications(appRes.data.slice(0, 5));
-        if (profRes.data) setProfile(profRes.data);
+        if (recRes && recRes.success && recRes.data) setRecommendations((Array.isArray(recRes.data) ? recRes.data : recRes.data.data || []).slice(0, 5));
+        if (appRes && appRes.success && appRes.data) setApplications((Array.isArray(appRes.data) ? appRes.data : appRes.data.data || []).slice(0, 5));
+        if (profRes && profRes.success && profRes.data) setProfile(profRes.data?.data || profRes.data);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }

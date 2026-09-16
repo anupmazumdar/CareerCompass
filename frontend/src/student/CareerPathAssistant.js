@@ -57,6 +57,7 @@ How can I help you accelerate your placement journey today?`,
   const [isSending, setIsSending] = useState(false);
   const [groundedContext, setGroundedContext] = useState(null);
   const [toast, setToast] = useState(null);
+  const [error, setError] = useState(null);
 
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -68,27 +69,42 @@ How can I help you accelerate your placement journey today?`,
 
   // Scroll to bottom when messages update
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages, isSending]);
 
   // Load grounded student context summary on mount
   useEffect(() => {
     async function loadGroundedSummary() {
       try {
+        setError(null);
         const [meRes, appRes] = await Promise.all([
-          api.get('/api/students/me').catch(() => ({ data: { data: null } })),
-          api.get('/api/applications/my-applications').catch(() => ({ data: { data: [] } }))
+          api.get('/api/students/me').catch(err => {
+            console.warn('Failed to load profile for assistant grounding:', err.message);
+            return { success: false, data: null };
+          }),
+          api.get('/api/applications/my-applications').catch(err => {
+            console.warn('Failed to load applications for assistant grounding:', err.message);
+            return { success: false, data: [] };
+          })
         ]);
 
-        if (meRes.data?.data) {
+        if (meRes && meRes.success && meRes.data) {
           setGroundedContext({
-            name: meRes.data.data.full_name,
-            skillsCount: (meRes.data.data.skills || []).length,
-            applicationsCount: (appRes.data?.data || []).length,
-            completeness: meRes.data.data.completeness_score || 0
+            name: meRes.data.full_name,
+            skillsCount: (meRes.data.skills || []).length,
+            applicationsCount: (appRes?.data || []).length,
+            completeness: meRes.data.completeness_score || 0
           });
         }
-      } catch (_) {}
+
+        if (!meRes.success && !appRes.success) {
+          throw new Error('Could not load student profile grounding');
+        }
+      } catch (err) {
+        console.error('Failed to load grounded context:', err);
+        setError('Could not load student profile grounding');
+        showNotification('Unable to load full profile context for assistant', 'error');
+      }
     }
     loadGroundedSummary();
   }, []);
@@ -116,20 +132,21 @@ How can I help you accelerate your placement journey today?`,
 
       const res = await api.post('/api/ai/chat', { messages: history });
 
-      if (res.data && res.data.success) {
+      if (res && res.success && res.data) {
         const assistantReply = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: res.data.data.reply,
-          modelUsed: res.data.data.modelUsed,
-          isFallback: res.data.data.isFallback
+          content: res.data.reply,
+          modelUsed: res.data.modelUsed,
+          isFallback: res.data.isFallback
         };
         setMessages(prev => [...prev, assistantReply]);
       } else {
-        throw new Error(res.data?.message || 'Failed to receive response');
+        throw new Error(res?.message || res?.error || 'Failed to receive response');
       }
     } catch (err) {
       console.error('Chat error:', err);
+      setError(err.message || 'Assistant encountered a network error');
       showNotification('Assistant encountered a temporary network delay', 'error');
       setMessages(prev => [
         ...prev,
@@ -183,6 +200,14 @@ How can I help you accelerate your placement journey today?`,
       )}
 
       <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col space-y-4">
+        {/* Grounding Error Alert */}
+        {error && (
+          <div data-testid="assistant-error-alert" className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex items-center gap-2.5 text-rose-800 text-xs font-semibold">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Top Header & Grounding Badge */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">

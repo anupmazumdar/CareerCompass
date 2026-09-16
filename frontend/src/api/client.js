@@ -1,5 +1,21 @@
 import { API_BASE_URL, AUTH_STORAGE_KEY } from '../config';
 
+/**
+ * Backend Response Envelopes (Source of truth: backend/app/utils/response.js):
+ *
+ * 1. Standard Success:
+ *    { success: true, message?: string, data: any }
+ *
+ * 2. List Routes:
+ *    { success: true, count?: number, data: any[] }
+ *
+ * 3. Paginated Routes (e.g. GET /api/opportunities):
+ *    { success: true, data: any[], total: number, totalPages: number, hasStudentProfile?: boolean }
+ *
+ * 4. Error Response:
+ *    { success: false, error: string, errors?: any }
+ */
+
 export async function apiRequest(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
 
@@ -36,6 +52,13 @@ export async function apiRequest(endpoint, options = {}) {
     data = raw ? JSON.parse(raw) : {};
   } catch {
     data = { success: false, error: raw?.slice(0, 200) || 'Server returned invalid response' };
+  }
+
+  // Normalize data so it always returns the full envelope object
+  if (typeof data !== 'object' || data === null) {
+    data = { success: response.ok, data };
+  } else if (data.success === undefined) {
+    data.success = response.ok;
   }
 
   if (!response.ok) {

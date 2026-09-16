@@ -42,6 +42,8 @@ export function CareerPathSkills() {
   const [selectedProficiency, setSelectedProficiency] = useState('intermediate');
   const [submittingSkill, setSubmittingSkill] = useState(false);
 
+  const [error, setError] = useState(null);
+
   // Toast Notification
   const [toast, setToast] = useState(null);
 
@@ -55,30 +57,45 @@ export function CareerPathSkills() {
     async function loadInitialData() {
       try {
         setLoading(true);
+        setError(null);
         const [rolesRes, skillsRes, meRes] = await Promise.all([
-          api.get('/api/skills/roles').catch(() => ({ data: { data: [] } })),
-          api.get('/api/skills').catch(() => ({ data: { data: [] } })),
-          api.get('/api/students/me').catch(() => ({ data: { data: null } }))
+          api.get('/api/skills/roles').catch(err => {
+            console.warn('Failed to load roles:', err.message);
+            return { success: false, data: [] };
+          }),
+          api.get('/api/skills').catch(err => {
+            console.warn('Failed to load canonical skills:', err.message);
+            return { success: false, data: [] };
+          }),
+          api.get('/api/students/me').catch(err => {
+            console.warn('Failed to load student profile for skills:', err.message);
+            return { success: false, data: null };
+          })
         ]);
 
-        if (rolesRes.data && rolesRes.data.success) {
-          setRoles(rolesRes.data.data || []);
+        if (rolesRes && rolesRes.success) {
+          setRoles(rolesRes.data || []);
         }
-        if (skillsRes.data && skillsRes.data.success) {
-          setAllCanonicalSkills(skillsRes.data.data || []);
+        if (skillsRes && skillsRes.success) {
+          setAllCanonicalSkills(skillsRes.data || []);
         }
-        if (meRes.data && meRes.data.data?.skills) {
-          setStudentSkills(meRes.data.data.skills || []);
-          if (meRes.data.data.preferred_role) {
-            const pref = meRes.data.data.preferred_role.toLowerCase();
+        if (meRes && meRes.success && meRes.data?.skills) {
+          setStudentSkills(meRes.data.skills || []);
+          if (meRes.data.preferred_role) {
+            const pref = meRes.data.preferred_role.toLowerCase();
             if (pref.includes('backend')) setSelectedRole('backend');
             else if (pref.includes('front')) setSelectedRole('frontend');
             else if (pref.includes('data') || pref.includes('ai')) setSelectedRole('ai_data');
             else if (pref.includes('devops') || pref.includes('cloud')) setSelectedRole('devops');
           }
         }
+
+        if (!rolesRes.success && !skillsRes.success && !meRes.success) {
+          throw new Error('Failed to load initial skills data');
+        }
       } catch (err) {
         console.error('Failed to load initial skills data:', err);
+        setError(err.message || 'Failed to load skills data');
         showNotification('Failed to load skills data', 'error');
       } finally {
         setLoading(false);
@@ -92,8 +109,8 @@ export function CareerPathSkills() {
     try {
       setAnalyzing(true);
       const res = await api.get(`/api/skills/gap-analysis?role=${roleKey}`);
-      if (res.data && res.data.success) {
-        setGapAnalysis(res.data.data);
+      if (res && res.success && res.data) {
+        setGapAnalysis(res.data);
       }
     } catch (err) {
       console.error('Failed to compute gap analysis:', err);
@@ -121,9 +138,9 @@ export function CareerPathSkills() {
         proficiencyLevel: selectedProficiency
       });
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Skill added to your profile!');
-        setStudentSkills(res.data.data.skills || []);
+        setStudentSkills(res.data?.skills || res.data || []);
         setIsAddModalOpen(false);
         setSelectedSkillId('');
         setSkillSearch('');
@@ -156,9 +173,9 @@ export function CareerPathSkills() {
         proficiencyLevel: 'intermediate'
       });
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification(`✓ ${skillName} added to your verified skills!`);
-        setStudentSkills(res.data.data.skills || []);
+        setStudentSkills(res.data?.skills || res.data || []);
         await runGapAnalysis(selectedRole);
       }
     } catch (err) {
@@ -175,9 +192,9 @@ export function CareerPathSkills() {
         proficiencyLevel: newProficiency
       });
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Proficiency updated');
-        setStudentSkills(res.data.data.skills || []);
+        setStudentSkills(res.data?.skills || res.data || []);
         await runGapAnalysis(selectedRole);
       }
     } catch (err) {
@@ -190,9 +207,9 @@ export function CareerPathSkills() {
   const handleDeleteSkill = async (skillId) => {
     try {
       const res = await api.delete(`/api/students/me/skills/${skillId}`);
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Skill removed from profile');
-        setStudentSkills(res.data.data.skills || []);
+        setStudentSkills(res.data?.skills || res.data || []);
         await runGapAnalysis(selectedRole);
       }
     } catch (err) {
@@ -240,6 +257,20 @@ export function CareerPathSkills() {
       )}
 
       <div className="max-w-7xl mx-auto space-y-8">
+        {error && (
+          <div data-testid="skills-error-alert" className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={16} className="text-rose-600 flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-rose-700 hover:text-rose-900 underline font-semibold ml-auto"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

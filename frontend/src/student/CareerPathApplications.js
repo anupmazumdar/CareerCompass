@@ -43,6 +43,7 @@ export function CareerPathApplications() {
     upcoming_reminders: []
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list' | 'timeline'
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -82,19 +83,24 @@ export function CareerPathApplications() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const [appsRes, statsRes] = await Promise.all([
         api.get('/api/applications/my-applications'),
-        api.get('/api/applications/stats').catch(() => ({ data: { data: null } }))
+        api.get('/api/applications/stats').catch(err => {
+          console.warn('Failed to load application stats:', err.message);
+          return { success: false, data: null };
+        })
       ]);
 
-      if (appsRes.data && appsRes.data.success) {
-        setApplications(appsRes.data.data || []);
+      if (appsRes && appsRes.success) {
+        setApplications(appsRes.data || []);
       }
-      if (statsRes.data && statsRes.data.success && statsRes.data.data) {
-        setStats(statsRes.data.data);
+      if (statsRes && statsRes.success && statsRes.data) {
+        setStats(statsRes.data);
       }
     } catch (err) {
       console.error('Failed to load applications:', err);
+      setError(err.message || 'Failed to load application tracker');
       showNotification('Failed to load application tracker', 'error');
     } finally {
       setLoading(false);
@@ -111,8 +117,8 @@ export function CareerPathApplications() {
       setDetailLoading(true);
       setSelectedApplication(null);
       const res = await api.get(`/api/applications/${appId}`);
-      if (res.data && res.data.success) {
-        setSelectedApplication(res.data.data);
+      if (res && res.success && res.data) {
+        setSelectedApplication(res.data);
       }
     } catch (err) {
       showNotification('Failed to load application details', 'error');
@@ -136,8 +142,8 @@ export function CareerPathApplications() {
       showNotification(`Application moved to ${newStatus.replace('_', ' ')}`);
       // Refresh stats
       api.get('/api/applications/stats').then(res => {
-        if (res.data && res.data.data) setStats(res.data.data);
-      });
+        if (res && res.success && res.data) setStats(res.data);
+      }).catch(err => console.warn('Failed to refresh stats:', err.message));
     } catch (err) {
       fetchData(); // revert
       showNotification('Failed to update application stage', 'error');
@@ -163,7 +169,7 @@ export function CareerPathApplications() {
         reminderDate: quickAddData.reminderDate || null
       });
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification(`Tracked application for ${quickAddData.title} at ${quickAddData.company}!`);
         setIsQuickAddOpen(false);
         setQuickAddData({
@@ -177,7 +183,7 @@ export function CareerPathApplications() {
         fetchData();
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to track application';
+      const msg = err.data?.message || err.data?.error || err.message || 'Failed to track application';
       showNotification(msg, 'error');
     } finally {
       setSubmittingQuickAdd(false);
@@ -197,7 +203,7 @@ export function CareerPathApplications() {
         reminderDate: noteReminderDate || null
       });
 
-      if (res.data && res.data.success) {
+      if (res && res.success) {
         showNotification('Note added successfully!');
         setNoteContent('');
         setNoteReminderDate('');
@@ -206,7 +212,7 @@ export function CareerPathApplications() {
         fetchData();
       }
     } catch (err) {
-      showNotification('Failed to add note', 'error');
+      showNotification(err.message || 'Failed to add note', 'error');
     } finally {
       setSubmittingNote(false);
     }
@@ -285,6 +291,16 @@ export function CareerPathApplications() {
         }`}>
           {toast.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           {toast.message}
+        </div>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <div data-testid="applications-error-alert" className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
         </div>
       )}
 
@@ -483,7 +499,7 @@ export function CareerPathApplications() {
                             </div>
 
                             <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2 leading-snug mb-2">
-                              {card.job_title}
+                              {card.job_title || card.role_title}
                             </h4>
 
                             {/* Location & Resume Version */}
@@ -569,7 +585,7 @@ export function CareerPathApplications() {
                         >
                           <td className="py-3.5 px-6">
                             <p className="font-extrabold text-indigo-600 uppercase text-[10px]">{app.company_name}</p>
-                            <p className="font-bold text-slate-900 text-sm mt-0.5">{app.job_title}</p>
+                            <p className="font-bold text-slate-900 text-sm mt-0.5">{app.job_title || app.role_title}</p>
                             <span className="text-slate-400 text-[11px]">{app.job_location}</span>
                           </td>
                           <td className="py-3.5 px-4">

@@ -9,7 +9,8 @@ import {
   Building2,
   ChevronRight,
   MessageSquare,
-  Award
+  Award,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../api/client';
 
@@ -19,40 +20,66 @@ export function CareerPathDashboard() {
   const [gapAnalysis, setGapAnalysis] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showNotification = (message, type = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     async function loadDashboard() {
       try {
         setLoading(true);
+        setError(null);
         const [meRes, appsRes, recsRes] = await Promise.all([
-          api.get('/api/students/me').catch(() => ({ data: { data: null } })),
-          api.get('/api/applications/my-applications').catch(() => ({ data: { data: [] } })),
-          api.get('/api/opportunities?limit=3').catch(() => ({ data: { data: [] } }))
+          api.get('/api/students/me').catch(err => {
+            console.warn('Failed to load profile:', err.message);
+            return { success: false, data: null };
+          }),
+          api.get('/api/applications/my-applications').catch(err => {
+            console.warn('Failed to load applications:', err.message);
+            return { success: false, data: [] };
+          }),
+          api.get('/api/opportunities?limit=3').catch(err => {
+            console.warn('Failed to load recommended opportunities:', err.message);
+            return { success: false, data: [] };
+          })
         ]);
 
-        if (meRes.data?.data) {
-          setProfile(meRes.data.data);
+        if (meRes && meRes.success && meRes.data) {
+          setProfile(meRes.data);
           // Load gap analysis for preferred role
-          const roleKey = meRes.data.data.preferred_role?.toLowerCase().includes('backend')
+          const roleKey = meRes.data.preferred_role?.toLowerCase().includes('backend')
             ? 'backend'
-            : meRes.data.data.preferred_role?.toLowerCase().includes('front')
+            : meRes.data.preferred_role?.toLowerCase().includes('front')
             ? 'frontend'
             : 'fullstack';
-          const gapRes = await api.get(`/api/skills/gap-analysis?role=${roleKey}`).catch(() => null);
-          if (gapRes?.data?.data) {
-            setGapAnalysis(gapRes.data.data);
+          const gapRes = await api.get(`/api/skills/gap-analysis?role=${roleKey}`).catch(err => {
+            console.warn('Failed to load gap analysis:', err.message);
+            return null;
+          });
+          if (gapRes && gapRes.success && gapRes.data) {
+            setGapAnalysis(gapRes.data);
           }
         }
 
-        if (appsRes.data?.data) {
-          setApplications(appsRes.data.data);
+        if (appsRes && appsRes.success && appsRes.data) {
+          setApplications(appsRes.data);
         }
 
-        if (recsRes.data?.data) {
-          setRecommendations(recsRes.data.data);
+        if (recsRes && recsRes.success && recsRes.data) {
+          setRecommendations(recsRes.data);
+        }
+
+        if (!meRes.success && !appsRes.success && !recsRes.success) {
+          throw new Error('Failed to load dashboard data from server');
         }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
+        showNotification(err.message || 'Failed to load dashboard data', 'error');
       } finally {
         setLoading(false);
       }
@@ -83,7 +110,26 @@ export function CareerPathDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 py-8 px-4 sm:px-6 lg:px-8 font-sans text-slate-800">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          data-testid="toast-notification"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg border text-sm font-medium bg-rose-50 border-rose-200 text-rose-800"
+        >
+          <AlertCircle size={18} />
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* Error State Banner */}
+        {error && (
+          <div data-testid="dashboard-error-alert" className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3 text-rose-800 text-xs font-semibold">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Welcome Header */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
           <div className="space-y-2 max-w-2xl">
@@ -337,7 +383,7 @@ export function CareerPathDashboard() {
               <div>
                 <p className="text-xs font-bold text-slate-900">Skill Gap Diagnostics</p>
                 <p className="text-[11px] text-slate-400">
-                  {gapAnalysis ? `${gapAnalysis.missingCount} gaps identified for ${gapAnalysis.targetRole.title}` : 'Analyze competencies'}
+                  {gapAnalysis ? `${gapAnalysis.missingCount ?? 0} gaps identified for ${gapAnalysis.targetRole?.title || 'Target Role'}` : 'Analyze competencies'}
                 </p>
               </div>
               <Link
