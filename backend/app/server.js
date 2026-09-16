@@ -115,17 +115,24 @@ app.use(globalErrorHandler);
 // 6. Server Initialization
 async function ensureAdminUser() {
   try {
-    const email = (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase();
+    // Purge legacy personal email
+    await db.run('DELETE FROM users WHERE email = ?', ['anupmazumdar987@gmail.com']);
+
+    const email = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
     const existing = await db.get('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL', [email]);
+    const password = process.env.SUPERADMIN_PASSWORD || 'Admin@123';
+    const { hashPassword } = require('./core/authentication/auth');
+    const hash = await hashPassword(password);
+
     if (!existing) {
-      const password = process.env.SUPERADMIN_PASSWORD || 'Anup@2610';
-      const { hashPassword } = require('./core/authentication/auth');
-      const hash = await hashPassword(password);
       await db.run(
         `INSERT INTO users (email, password_hash, role, full_name, status) VALUES (?, ?, 'admin', ?, 'active')`,
         [email, hash, process.env.SUPERADMIN_NAME || 'TalentAI Admin']
       );
       logger.info(`🔐 Seeded initial admin account: ${email}`);
+    } else {
+      await db.run('UPDATE users SET password_hash = ?, role = "admin" WHERE id = ?', [hash, existing.id]);
+      logger.info(`🔐 Updated admin account credentials: ${email}`);
     }
   } catch (err) {
     logger.warn(`⚠️ ensureAdminUser notice: ${err.message}`);

@@ -37,7 +37,7 @@ async function runTests() {
     console.log('✅ Student registered and authenticated');
 
     // Admin token directly signed for seeded superadmin
-    const adminEmail = (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase();
+    const adminEmail = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
     const adminToken = jwt.sign(
       { userId: 1, email: adminEmail, userType: 'superadmin', role: 'superadmin' },
       JWT_SECRET,

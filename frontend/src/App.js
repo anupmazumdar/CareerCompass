@@ -920,7 +920,7 @@ function AuthModal({ authMode, setAuthMode, setShowAuthModal, login, selectedPla
                 <button
                   type="button"
                   onClick={() => {
-                    setFormData(prev => ({ ...prev, email: 'anupmazumdar987@gmail.com', password: 'Anup@2610' }));
+                    setFormData(prev => ({ ...prev, email: 'admin@talentai.me', password: 'Admin@123' }));
                     setAuthUserType('superadmin');
                     setError('');
                   }}

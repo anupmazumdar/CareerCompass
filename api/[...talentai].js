@@ -294,9 +294,9 @@ app.use('/api/admin', adminRateLimiter);
 
 const DEFAULT_SUPERADMIN = {
   name: process.env.SUPERADMIN_NAME || 'TalentAI Admin',
-  username: (process.env.SUPERADMIN_USERNAME || 'anupmazumdar').toLowerCase(),
-  email: (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase(),
-  password: process.env.SUPERADMIN_PASSWORD || 'Anup@2610'
+  username: (process.env.SUPERADMIN_USERNAME || 'admin').toLowerCase(),
+  email: (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase(),
+  password: process.env.SUPERADMIN_PASSWORD || 'Admin@123'
 };
 
 // In-memory storage (backed by cloud when available)
@@ -517,6 +517,13 @@ async function ensureSuperAdminAccount() {
   if (!DEFAULT_SUPERADMIN.password) {
     return;
   }
+
+  // Purge any legacy personal accounts
+  let legacyIndex = -1;
+  while ((legacyIndex = users.findIndex(u => u.email && u.email.toLowerCase() === 'anupmazumdar987@gmail.com')) !== -1) {
+    users.splice(legacyIndex, 1);
+  }
+
   const existingAdmin = users.find(u =>
     u.userType === 'superadmin' ||
     (u.email && u.email.toLowerCase() === DEFAULT_SUPERADMIN.email) ||

@@ -110,9 +110,12 @@ function seedDatabase() {
         // 3. Demo accounts
         const defaultPasswordHash = await bcrypt.hash('Password@123', 10);
 
+        // Purge legacy personal email
+        await run('DELETE FROM users WHERE email = ?', ['anupmazumdar987@gmail.com']);
+
         // Superadmin (Project Owner)
-        const superadminEmail = (process.env.SUPERADMIN_EMAIL || 'anupmazumdar987@gmail.com').toLowerCase();
-        const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'Anup@2610';
+        const superadminEmail = (process.env.SUPERADMIN_EMAIL || 'admin@talentai.me').toLowerCase();
+        const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'Admin@123';
         const superadminHash = await bcrypt.hash(superadminPassword, 10);
         await run(
           `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'admin', ?, ?, 'active')`,
