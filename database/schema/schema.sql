@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('student', 'recruiter', 'admin')),
+    role TEXT NOT NULL CHECK (role IN ('student', 'recruiter', 'employer', 'admin', 'superadmin', 'candidate')),
     full_name TEXT NOT NULL,
     phone TEXT,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending_approval', 'disabled')),
@@ -36,11 +36,21 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     headline TEXT,
     bio TEXT,
     location TEXT,
+    college TEXT,
+    degree TEXT,
+    branch TEXT,
+    current_semester INTEGER,
+    graduation_year INTEGER,
+    cgpa REAL,
+    achievements TEXT, -- JSON array of achievements
     github_url TEXT,
     linkedin_url TEXT,
     portfolio_url TEXT,
     preferred_role TEXT,
+    preferred_roles TEXT, -- JSON array or comma separated
     preferred_location TEXT,
+    preferred_locations TEXT, -- JSON array or comma separated
+    work_mode_preference TEXT DEFAULT 'any' CHECK (work_mode_preference IN ('remote', 'onsite', 'hybrid', 'any')),
     is_public INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -142,20 +152,48 @@ CREATE TABLE IF NOT EXISTS opportunities (
     title TEXT NOT NULL,
     company TEXT NOT NULL,
     company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    type TEXT NOT NULL DEFAULT 'Job' CHECK (type IN ('Job', 'Internship', 'Hackathon', 'Scholarship', 'Course')),
     description TEXT NOT NULL,
     required_skills TEXT NOT NULL, -- JSON array of strings
     location TEXT NOT NULL,
+    work_mode TEXT NOT NULL DEFAULT 'onsite' CHECK (work_mode IN ('remote', 'onsite', 'hybrid')),
     work_type TEXT NOT NULL DEFAULT 'onsite' CHECK (work_type IN ('remote', 'onsite', 'hybrid')),
     employment_type TEXT NOT NULL DEFAULT 'full-time' CHECK (employment_type IN ('full-time', 'internship', 'contract')),
     experience_level TEXT DEFAULT 'entry' CHECK (experience_level IN ('entry', 'mid', 'senior')),
+    min_cgpa REAL DEFAULT 0.0,
+    eligible_branches TEXT DEFAULT '["All"]', -- JSON array of branches
+    eligible_grad_years TEXT DEFAULT '["All"]', -- JSON array of graduation years
     min_salary REAL,
     max_salary REAL,
+    stipend_range TEXT,
     deadline DATETIME,
-    posted_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- recruiter_id, nullable for admin-seeded listings
+    apply_link TEXT,
+    posted_by INTEGER REFERENCES users(id) ON DELETE SET NULL, -- recruiter/employer id
     status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'closed')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS saved_opportunities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    opportunity_id INTEGER NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, opportunity_id)
+);
+
+CREATE TABLE IF NOT EXISTS student_goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT DEFAULT 'skill' CHECK (category IN ('skill', 'career', 'project', 'certification')),
+    target_date DATETIME,
+    status TEXT DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'completed', 'abandoned')),
+    completed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -196,6 +234,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     mime_type TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     raw_text TEXT,
+    version_label TEXT DEFAULT 'v1',
     is_primary INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -217,10 +256,12 @@ CREATE TABLE IF NOT EXISTS applications (
     job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
     student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
     resume_id INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('saved', 'applied', 'under_review', 'shortlisted', 'interview', 'selected', 'rejected', 'withdrawn')),
+    resume_version_used TEXT,
+    status TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('saved', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn', 'under_review', 'shortlisted', 'selected')),
     match_score REAL DEFAULT 0,
     cover_note TEXT,
     notes TEXT,
+    reminder_date DATETIME,
     pipeline_stage TEXT DEFAULT 'profile',
     applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     applied_date DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -242,8 +283,8 @@ CREATE TABLE IF NOT EXISTS application_notes (
 CREATE TABLE IF NOT EXISTS application_status_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
-    changed_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    previous_status TEXT NOT NULL,
+    changed_by_user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT,
+    previous_status TEXT,
     new_status TEXT NOT NULL,
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP

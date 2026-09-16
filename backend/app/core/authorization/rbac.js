@@ -2,12 +2,34 @@
 
 const db = require('../database/connection');
 
+const ROLE_ALIASES = {
+  student: ['student', 'candidate'],
+  candidate: ['student', 'candidate'],
+  employer: ['employer', 'recruiter'],
+  recruiter: ['employer', 'recruiter'],
+  admin: ['admin', 'superadmin'],
+  superadmin: ['admin', 'superadmin']
+};
+
+function normalizeRole(role) {
+  const r = String(role || '').toLowerCase();
+  if (ROLE_ALIASES.student.includes(r)) return 'student';
+  if (ROLE_ALIASES.employer.includes(r)) return 'employer';
+  if (ROLE_ALIASES.admin.includes(r)) return 'admin';
+  return r;
+}
+
 /**
  * Server-side RBAC middleware generator.
- * @param  {...string} roles Allowed roles (e.g. 'student', 'recruiter', 'admin')
+ * @param  {...string} roles Allowed roles (e.g. 'student', 'employer', 'admin')
  */
 function requireRole(...roles) {
   const allowed = roles.flat().map((r) => String(r).toLowerCase());
+  const expandedAllowed = new Set();
+  allowed.forEach((r) => {
+    expandedAllowed.add(r);
+    (ROLE_ALIASES[r] || []).forEach((alias) => expandedAllowed.add(alias));
+  });
 
   return (req, res, next) => {
     if (!req.user) {
@@ -20,7 +42,7 @@ function requireRole(...roles) {
 
     const userRole = String(req.user.role || req.user.userType || '').toLowerCase();
 
-    if (!allowed.includes(userRole)) {
+    if (!expandedAllowed.has(userRole)) {
       return res.status(403).json({
         success: false,
         error: 'FORBIDDEN',
@@ -45,13 +67,15 @@ async function verifyCandidateAccess(req, res, next) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Authentication required' });
     }
 
+    const normalizedUserRole = normalizeRole(currentUser.role || currentUser.userType);
+
     // Platform admin has universal oversight
-    if (currentUser.role === 'admin') {
+    if (normalizedUserRole === 'admin') {
       return next();
     }
 
     // Student can access their own profile
-    if (currentUser.role === 'student') {
+    if (normalizedUserRole === 'student') {
       const student = await db.get('SELECT id FROM student_profiles WHERE user_id = ?', [currentUser.userId]);
       if (student && student.id === studentProfileId) {
         return next();
@@ -63,8 +87,8 @@ async function verifyCandidateAccess(req, res, next) {
       });
     }
 
-    // Recruiter can only view candidate if student applied to a job at recruiter's company
-    if (currentUser.role === 'recruiter') {
+    // Employer / recruiter can only view candidate if student applied to an opportunity or job at employer's company
+    if (normalizedUserRole === 'employer') {
       const recruiter = await db.get('SELECT company_id FROM recruiter_profiles WHERE user_id = ?', [currentUser.userId]);
       if (!recruiter || !recruiter.company_id) {
         return res.status(403).json({

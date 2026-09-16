@@ -137,8 +137,22 @@ function authenticateToken(req, res, next) {
 // RBAC middleware factory
 // Usage: requireRole('recruiter') or requireRole('recruiter', 'superadmin')
 // ---------------------------------------------------------------------------
+const ROLE_ALIASES = {
+  student: ['student', 'candidate'],
+  candidate: ['student', 'candidate'],
+  employer: ['employer', 'recruiter'],
+  recruiter: ['employer', 'recruiter'],
+  admin: ['admin', 'superadmin'],
+  superadmin: ['admin', 'superadmin']
+};
+
 function requireRole(...roles) {
   const allowed = roles.flat().map((r) => String(r).toLowerCase());
+  const expandedAllowed = new Set();
+  allowed.forEach((r) => {
+    expandedAllowed.add(r);
+    (ROLE_ALIASES[r] || []).forEach((alias) => expandedAllowed.add(alias));
+  });
 
   return (req, res, next) => {
     if (!req.user) {
@@ -152,7 +166,7 @@ function requireRole(...roles) {
       req.user.userType || req.user.role || ''
     ).toLowerCase();
 
-    if (!allowed.includes(userRole)) {
+    if (!expandedAllowed.has(userRole)) {
       return res.status(403).json({
         error: 'FORBIDDEN',
         message: `Access denied. Required role: ${allowed.join(' or ')}`,

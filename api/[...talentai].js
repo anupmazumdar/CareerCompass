@@ -1352,19 +1352,23 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    if (!['candidate', 'recruiter'].includes(normalizedUserType)) {
+    let canonicalUserType = normalizedUserType;
+    if (canonicalUserType === 'candidate') canonicalUserType = 'student';
+    if (canonicalUserType === 'recruiter') canonicalUserType = 'employer';
+
+    if (!['student', 'employer', 'candidate', 'recruiter'].includes(normalizedUserType)) {
       return res.status(400).json({ error: 'Invalid user type' });
     }
 
-    const normalizedName = String(name || '').trim() || (normalizedUserType === 'candidate' ? email.split('@')[0] : '');
+    const normalizedName = String(name || '').trim() || (['candidate', 'student'].includes(canonicalUserType) ? email.split('@')[0] : '');
     const normalizedCompany = String(company || '').trim();
 
-    if (normalizedUserType === 'recruiter' && !normalizedName) {
-      return res.status(400).json({ error: 'Recruiter name is required' });
+    if (['recruiter', 'employer'].includes(canonicalUserType) && !normalizedName) {
+      return res.status(400).json({ error: 'Employer/Recruiter name is required' });
     }
 
-    if (normalizedUserType === 'recruiter' && !normalizedCompany) {
-      return res.status(400).json({ error: 'Company is required for recruiter accounts' });
+    if (['recruiter', 'employer'].includes(canonicalUserType) && !normalizedCompany) {
+      return res.status(400).json({ error: 'Company is required for employer accounts' });
     }
 
     if (password.length < 8) {
@@ -1476,7 +1480,7 @@ app.post('/api/auth/auth0/session', async (req, res) => {
       return res.status(400).json({ error: 'Auth0 session credentials are required' });
     }
 
-    if (requestedUserType && !['candidate', 'recruiter'].includes(requestedUserType)) {
+    if (requestedUserType && !['candidate', 'recruiter', 'student', 'employer'].includes(requestedUserType)) {
       await writeAuthAuditLog('auth0_session_denied', req, {
         reason: 'invalid_user_type',
         requestedUserType

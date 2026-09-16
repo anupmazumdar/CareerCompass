@@ -71,4 +71,17 @@ test('RBAC Security - Server-side Role Enforcement', async () => {
     })
   });
   assert.equal(sqliRes.status, 401, 'SQL injection attempt must fail with 401 Unauthorized');
+
+  // 7. Employer token attempts admin endpoint -> 403 Forbidden
+  const employerToken = issueAccessToken({ userId: 303, email: 'employer@test.com', role: 'employer' });
+  const employerAdminStats = await fetch(`${baseUrl}/api/admin/stats`, {
+    headers: { Authorization: `Bearer ${employerToken}` }
+  });
+  assert.equal(employerAdminStats.status, 403, 'Employer must be denied from admin stats');
+
+  // 8. Student attempts to access recruiter endpoint -> 403 Forbidden
+  const studentRecruiter = await fetch(`${baseUrl}/api/recruiters/me`, {
+    headers: { Authorization: `Bearer ${studentToken}` }
+  });
+  assert.equal(studentRecruiter.status, 403, 'Student must be denied from recruiter/employer endpoints');
 });
