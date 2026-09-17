@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('student', 'recruiter', 'employer', 'admin', 'superadmin', 'candidate')),
+    role TEXT NOT NULL CHECK (role IN ('student', 'admin')),
     full_name TEXT NOT NULL,
     phone TEXT,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending_approval', 'disabled')),
@@ -56,16 +56,6 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS recruiter_profiles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
-    designation TEXT,
-    department TEXT,
-    is_company_admin INTEGER NOT NULL DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
 
 CREATE TABLE IF NOT EXISTS student_education (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +189,7 @@ CREATE TABLE IF NOT EXISTS student_goals (
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    created_by_recruiter_id INTEGER NOT NULL REFERENCES recruiter_profiles(id) ON DELETE RESTRICT,
+    created_by_recruiter_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     department TEXT,

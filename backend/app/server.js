@@ -19,13 +19,9 @@ const { notFoundHandler, globalErrorHandler } = require('./core/exceptions/error
 // Domain Routers
 const authRoutes = require('./api/auth/routes');
 const studentRoutes = require('./api/students/routes');
-const recruiterRoutes = require('./api/recruiters/routes');
-const companyRoutes = require('./api/companies/routes');
-const jobRoutes = require('./api/jobs/routes');
 const applicationRoutes = require('./api/applications/routes');
 const skillRoutes = require('./api/skills/routes');
 const matchingRoutes = require('./api/matching/routes');
-const recommendationRoutes = require('./api/recommendations/routes');
 const resumeRoutes = require('./api/resumes/routes');
 const opportunityRoutes = require('./api/opportunities/routes');
 const aiRoutes = require('./api/ai/routes');
@@ -57,7 +53,7 @@ app.use('/api/admin', adminRateLimiter);
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    platform: 'Unified TalentAI Career Platform',
+    platform: 'CareerCompass Student Platform',
     version: '2.0.0',
     timestamp: new Date().toISOString(),
     database: 'connected'
@@ -68,14 +64,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/student', studentRoutes);
-app.use('/api/recruiters', recruiterRoutes);
-app.use('/api/companies', companyRoutes);
-app.use('/api/jobs', jobRoutes);
 app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/matching', matchingRoutes);
-app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
@@ -170,7 +162,7 @@ async function startServer(port = config.port) {
   await ensureAdminUser();
   return new Promise((resolve) => {
     const server = app.listen(port, () => {
-      logger.info(`🚀 Unified TalentAI Backend running on port ${port} [env: ${config.nodeEnv}]`);
+      logger.info(`🚀 CareerCompass Backend running on port ${port} [env: ${config.nodeEnv}]`);
       resolve(server);
     });
   });

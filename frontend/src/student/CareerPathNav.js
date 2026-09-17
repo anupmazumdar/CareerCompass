@@ -8,6 +8,7 @@ import {
   User,
   LogOut,
   GraduationCap,
+  FileText,
   TrendingUp
 } from 'lucide-react';
 import { api } from '../api/client';
@@ -45,7 +46,8 @@ export function CareerPathNav() {
     { label: 'Opportunities', path: '/opportunities', icon: Compass },
     { label: 'Applications', path: '/applications', icon: Layers },
     { label: 'Skills & Gaps', path: '/skills', icon: Briefcase },
-    { label: 'AI Advisor', path: '/assistant', icon: Sparkles },
+    { label: 'Resume Analyzer', path: '/resume', icon: FileText },
+    { label: 'AI Guidance', path: '/ai-guidance', icon: Sparkles },
     { label: 'Profile', path: '/profile', icon: User }
   ];
 

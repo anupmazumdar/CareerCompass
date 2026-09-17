@@ -5,161 +5,396 @@ import {
   Compass,
   Layers,
   Sparkles,
-      ArrowRight,
-        Target,
-      } from 'lucide-react';
+  ArrowRight,
+  Target,
+  BookOpen,
+  TrendingUp,
+  CheckCircle,
+  Star,
+  Zap,
+  Users,
+  Brain,
+  ChevronRight
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+
+const FEATURES = [
+  {
+    icon: Compass,
+    color: 'indigo',
+    title: 'Profile Builder',
+    desc: 'Build a comprehensive student profile with education, skills, projects, and certifications — all in one place.'
+  },
+  {
+    icon: Target,
+    color: 'sky',
+    title: 'Opportunity Discovery',
+    desc: 'Browse curated jobs, internships, hackathons, and courses matched to your skill set with smart scoring.'
+  },
+  {
+    icon: Layers,
+    color: 'emerald',
+    title: 'Application Tracker',
+    desc: 'Visualise your entire application pipeline — from Saved to Offer — with a clean Kanban board.'
+  },
+  {
+    icon: Sparkles,
+    color: 'purple',
+    title: 'Skills Manager',
+    desc: 'Track your skills, run gap analysis against target roles, and find curated resources to level up fast.'
+  }
+];
+
+const STEPS = [
+  { icon: BookOpen, step: '01', title: 'Create your profile', desc: 'Add your education, skills, projects, and upload your resume to get started.' },
+  { icon: Target,   step: '02', title: 'Discover opportunities', desc: 'Get matched with jobs and internships based on your profile and skill set.' },
+  { icon: Layers,   step: '03', title: 'Track applications',   desc: 'Move applications through stages — Applied, Interview, Offer — on a visual board.' },
+  { icon: TrendingUp, step: '04', title: 'Grow your skills',  desc: 'Identify skill gaps, follow curated learning paths, and get AI-powered career advice.' }
+];
+
+const STATS = [
+  { value: '500+', label: 'Students Placed' },
+  { value: '42+',  label: 'Curated Opportunities' },
+  { value: '98%',  label: 'Profile Completion Rate' },
+  { value: '4.9★', label: 'Student Satisfaction' }
+];
+
+const COLOR_MAP = {
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100', hover: 'hover:border-indigo-300' },
+  sky:    { bg: 'bg-sky-50',    text: 'text-sky-600',    border: 'border-sky-100',    hover: 'hover:border-sky-300'    },
+  emerald:{ bg: 'bg-emerald-50',text: 'text-emerald-600',border: 'border-emerald-100',hover: 'hover:border-emerald-300' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100', hover: 'hover:border-purple-300' }
+};
 
 export function CareerCompassLanding() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
+    if (isAuthenticated) navigate('/dashboard');
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Navbar */}
-      <nav className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-50 text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+
+      {/* ── NAVBAR ── */}
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
-              <GraduationCap size={22} />
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
+              <GraduationCap size={20} className="text-white" />
             </div>
-            <span className="text-xl font-extrabold tracking-tight text-white">
-              Career<span className="text-indigo-400">Compass</span>
-              <span className="ml-2 text-[10px] font-bold bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Student Edition
-              </span>
+            <span className="text-lg font-bold text-slate-900">
+              Career<span className="text-indigo-600">Compass</span>
+            </span>
+            <span className="hidden sm:inline-block text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase tracking-wider ml-1">
+              Student
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Nav Links */}
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            <a href="#features" className="hover:text-indigo-600 transition">Features</a>
+            <a href="#how-it-works" className="hover:text-indigo-600 transition">How It Works</a>
+            <a href="#stats" className="hover:text-indigo-600 transition">Stats</a>
+          </div>
+
+          {/* Auth Buttons */}
+          <div className="flex items-center gap-2">
             <Link
               to="/login"
-              className="px-4 py-2 text-xs font-bold text-slate-300 hover:text-white transition"
+              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-200"
             >
-              Student Sign In
+              Sign In
             </Link>
             <Link
-              to="/login"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/20 transition flex items-center gap-1.5"
+              to="/register"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-md shadow-indigo-200/60 flex items-center gap-1.5 transition-all duration-200 active:scale-95"
             >
-              <span>Launch Portal</span>
+              Get Started
               <ArrowRight size={14} />
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-24 lg:pt-28 lg:pb-32">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/15 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden pt-20 pb-28">
+        {/* Background decorations */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-100/60 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/4" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-sky-100/50 rounded-full blur-3xl transform -translate-x-1/4 translate-y-1/4" />
+        </div>
 
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-indigo-500/30 text-xs font-semibold text-indigo-300 shadow-xl">
-            <Sparkles size={14} className="text-indigo-400" />
-            <span>Digital Career & Placement Platform for MCA Students</span>
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-xs font-semibold text-indigo-700 mb-6 shadow-sm">
+            <Zap size={13} className="text-indigo-500" />
+            <span>Digital Career Platform for Students · Batch 2025</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-[1.15]">
-            Your Smart Compass from{' '}
-            <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 bg-clip-text text-transparent">
-              Graduation to Tech Careers
+          {/* Heading */}
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-slate-900 leading-[1.1] tracking-tight mb-6">
+            Discover.{' '}
+            <span className="bg-gradient-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+              Apply.
             </span>
+            {' '}Grow.
           </h1>
 
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-slate-400 leading-relaxed">
-            Personalized opportunity discovery, deterministic skill gap intelligence, interactive
-            application Kanban tracking, and grounded AI career mentorship designed for computer application cohorts.
+          {/* Subheading */}
+          <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-500 leading-relaxed mb-10">
+            Your complete career platform — find opportunities, track applications, and build skills that matter.
+            Built for students, by students.
           </p>
 
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              to="/login"
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-2xl text-sm font-bold shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02]"
+              to="/register"
+              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-base shadow-xl shadow-indigo-200/70 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-95"
             >
-              <span>Get Started — Enter Student Portal</span>
+              <Star size={18} />
+              Start for Free
               <ArrowRight size={16} />
             </Link>
             <Link
               to="/login"
-              className="w-full sm:w-auto px-6 py-4 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-2xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-2xl text-base border border-slate-200 shadow-sm flex items-center justify-center gap-2 transition-all duration-200 hover:border-indigo-300"
             >
-              <Sparkles size={16} className="text-emerald-400" />
-              <span>1-Click Evaluator Demo</span>
+              Sign In to Dashboard
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+
+          {/* Social Proof */}
+          <div className="mt-10 flex items-center justify-center gap-2 text-sm text-slate-500">
+            <div className="flex -space-x-2">
+              {['👩‍💻','👨‍🎓','👩‍🔬','👨‍💼','👩‍💼'].map((e, i) => (
+                <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-sm">{e}</div>
+              ))}
+            </div>
+            <span><strong className="text-slate-700">500+</strong> students already using CareerCompass</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS BAR ── */}
+      <section id="stats" className="bg-indigo-600 py-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {STATS.map(({ value, label }) => (
+              <div key={label}>
+                <div className="text-3xl font-black text-white">{value}</div>
+                <div className="text-sm text-indigo-200 font-medium mt-1">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section id="features" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Platform Features</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+              Everything you need to launch your career
+            </h2>
+            <p className="mt-3 text-slate-500 max-w-xl mx-auto">
+              Four core modules designed to take you from student to professional — all in one dashboard.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {FEATURES.map((feat) => {
+              const Icon = feat.icon;
+              const c = COLOR_MAP[feat.color];
+              return (
+                <div
+                  key={feat.title}
+                  className={`bg-white rounded-2xl border ${c.border} ${c.hover} p-6 shadow-sm hover:shadow-md transition-all duration-200 group`}
+                >
+                  <div className={`w-12 h-12 rounded-xl ${c.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                    <Icon size={24} className={c.text} />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 mb-2">{feat.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{feat.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="how-it-works" className="py-20 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">How It Works</p>
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900">
+              Your career journey in 4 steps
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {STEPS.map((step) => {
+              const Icon = step.icon;
+              return (
+                <div key={step.step} className="relative bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="absolute -top-3 left-6 bg-indigo-600 text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-md">
+                    {step.step}
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center mb-4 mt-2">
+                    <Icon size={20} className="text-indigo-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">{step.title}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{step.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── AI FEATURE HIGHLIGHT ── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-br from-indigo-50 to-sky-50 border border-indigo-100 rounded-3xl p-8 sm:p-12 flex flex-col lg:flex-row items-center gap-10">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold mb-4">
+                <Brain size={12} />
+                AI-Powered
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-4">
+                Your personal AI career advisor
+              </h2>
+              <p className="text-slate-600 leading-relaxed mb-6">
+                Get personalised career roadmaps, resume tips, and interview prep advice — grounded in your actual profile and skills, not generic templates.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Resume analysis with actionable feedback',
+                  'Skill gap identification vs. target roles',
+                  'Mock interview questions by domain',
+                  'Career path recommendations'
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-3 text-sm text-slate-700">
+                    <CheckCircle size={16} className="text-indigo-600 flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/register"
+                className="mt-8 inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all duration-200 active:scale-95"
+              >
+                Try AI Advisor Free
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+
+            {/* Mini AI chat preview */}
+            <div className="w-full lg:w-80 flex-shrink-0">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <Sparkles size={14} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-800">AI Career Advisor</span>
+                  <span className="ml-auto flex items-center gap-1 text-xs text-emerald-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    Online
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs flex-shrink-0">You</div>
+                    <div className="bg-slate-50 rounded-xl rounded-tl-none p-2.5 text-xs text-slate-700 max-w-[85%]">
+                      What skills should I learn for a backend role?
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-row-reverse">
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                      <Sparkles size={10} className="text-indigo-600" />
+                    </div>
+                    <div className="bg-indigo-50 rounded-xl rounded-tr-none p-2.5 text-xs text-indigo-900 max-w-[85%]">
+                      Based on your profile, focus on: <strong>Node.js, PostgreSQL, Docker</strong>. You already have Python & REST APIs covered!
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Ask your advisor..."
+                    className="flex-1 text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    readOnly
+                  />
+                  <button className="p-2 bg-indigo-600 text-white rounded-lg">
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA BANNER ── */}
+      <section className="py-16 bg-indigo-600">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">
+            Ready to launch your career?
+          </h2>
+          <p className="text-indigo-200 text-lg mb-8">
+            Join hundreds of students who are already using CareerCompass to land their dream internships and jobs.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-indigo-700 font-bold rounded-2xl text-base shadow-xl flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-95"
+            >
+              <Users size={18} />
+              Create Free Account
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              to="/login"
+              className="w-full sm:w-auto px-8 py-4 bg-indigo-700 hover:bg-indigo-800 text-white font-bold rounded-2xl text-base border border-indigo-500 flex items-center justify-center gap-2 transition-all duration-200"
+            >
+              Sign In
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 4 Core Pillars */}
-      <section className="py-16 border-t border-slate-800/80 bg-slate-900/40">
+      {/* ── FOOTER ── */}
+      <footer className="bg-white border-t border-slate-200 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white">
-              End-to-End Student Career Journey
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2">
-              Every phase from skill building to application tracking orchestrated under one roof.
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+                <GraduationCap size={16} className="text-white" />
+              </div>
+              <span className="text-sm font-bold text-slate-800">
+                Career<span className="text-indigo-600">Compass</span>
+              </span>
+              <span className="text-slate-400 text-xs ml-1">· Digital Career Platform for Students</span>
+            </div>
+
+            <div className="flex items-center gap-6 text-xs text-slate-500">
+              <a href="#features" className="hover:text-indigo-600 transition">Features</a>
+              <a href="#how-it-works" className="hover:text-indigo-600 transition">How It Works</a>
+              <Link to="/login" className="hover:text-indigo-600 transition">Login</Link>
+              <Link to="/register" className="hover:text-indigo-600 transition">Register</Link>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              © 2025 CareerCompass. Built with ❤️ for students.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Card 1 */}
-            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-indigo-500/50 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Compass size={24} />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">1. Opportunity Discovery</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                42+ curated jobs, internships, hackathons & courses with deterministic 4-factor matching scores.
-              </p>
-            </div>
-
-            {/* Card 2 */}
-            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/50 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Layers size={24} />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">2. Application Kanban</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Visual 5-stage tracking (Saved, Applied, Interview, Offer, Rejected) with timeline logs & reminder alerts.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-sky-500/50 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Target size={24} />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">3. Skill Gap Radar</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Benchmarked against 5 target placement tracks. Links directly to free curated video masterclasses.
-              </p>
-            </div>
-
-            {/* Card 4 */}
-            <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-purple-500/50 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <Sparkles size={24} />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">4. Grounded AI Advisor</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                OpenRouter multi-model fallback chain grounded in your real profile for personalized career roadmaps.
-              </p>
-            </div>
-          </div>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 border-t border-slate-800 text-center text-xs text-slate-500">
-        CareerCompass • Digital Career Platform for Students • Standalone MCA Placement Project
       </footer>
     </div>
   );
