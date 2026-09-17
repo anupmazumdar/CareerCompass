@@ -140,6 +140,26 @@ function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
         });
         const skillMap = Object.fromEntries(skillRows.map(s => [s.name, s.id]));
 
+        // Link skill parent-child hierarchy for taxonomy matching
+        const skillRelationships = [
+          { child: 'React', parent: 'JavaScript' },
+          { child: 'Next.js', parent: 'React' },
+          { child: 'Vue.js', parent: 'JavaScript' },
+          { child: 'TypeScript', parent: 'JavaScript' },
+          { child: 'Express.js', parent: 'Node.js' },
+          { child: 'FastAPI', parent: 'Python' },
+          { child: 'Django', parent: 'Python' },
+          { child: 'Spring Boot', parent: 'Java' },
+          { child: 'PostgreSQL', parent: 'SQL' },
+          { child: 'MySQL', parent: 'SQL' },
+          { child: 'SQLite', parent: 'SQL' }
+        ];
+        for (const rel of skillRelationships) {
+          if (skillMap[rel.child] && skillMap[rel.parent]) {
+            await run('UPDATE skills SET parent_skill_id = ? WHERE id = ?', [skillMap[rel.parent], skillMap[rel.child]]);
+          }
+        }
+
         // 3. Companies
         const companiesData = [
           { name: 'Razorpay', website: 'https://razorpay.com', industry: 'Fintech & Payments' },
@@ -194,7 +214,20 @@ function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
           );
         }
 
-        // Recruiter User removed for CareerCompass student-only platform
+        // Demo Recruiter: TechCorp Recruiter
+        const recruiterPasswordHash = await bcrypt.hash('Password@123', 10);
+        const techCorpId = companyMap.get('TechCorp Innovations');
+        await run(
+          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'recruiter', ?, ?, 'active')`,
+          ['recruiter@techcorp.com', recruiterPasswordHash, 'Sarah Jenkins', '+91 9876543211']
+        );
+        const recruiterUser = await get('SELECT id FROM users WHERE email = ?', ['recruiter@techcorp.com']);
+        if (recruiterUser) {
+          await run(
+            `INSERT OR IGNORE INTO recruiter_profiles (user_id, company_id, designation, department, is_company_admin) VALUES (?, ?, ?, ?, 1)`,
+            [recruiterUser.id, techCorpId || null, 'Lead Technical Recruiter', 'Engineering Talent']
+          );
+        }
 
         // Demo Student: Alex Chen
         await run(
