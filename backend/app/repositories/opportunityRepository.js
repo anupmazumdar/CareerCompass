@@ -152,7 +152,7 @@ class OpportunityRepository {
         data.location || 'Remote',
         data.work_mode || data.workMode || 'onsite',
         data.work_mode || data.workMode || 'onsite',
-        data.employment_type || data.employmentType || 'full-time',
+        data.employment_type || data.employmentType || (String(data.type || '').toLowerCase() === 'internship' ? 'internship' : 'full-time'),
         data.experience_level || data.experienceLevel || 'entry',
         (data.min_cgpa !== undefined || data.minCgpa !== undefined) ? Number(data.min_cgpa !== undefined ? data.min_cgpa : data.minCgpa) : 0.0,
         eligibleBranchesJson,
@@ -302,8 +302,14 @@ class OpportunityRepository {
       parsedGradYears = (row.eligible_grad_years || 'All').split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    const isIntern = (row.employment_type && row.employment_type.toLowerCase() === 'internship') || (row.type && row.type.toLowerCase() === 'internship');
+    const normalizedEmpType = isIntern ? 'internship' : (row.employment_type || 'full-time');
+    const normalizedType = isIntern ? 'Internship' : (row.type || 'Job');
+
     return {
       ...row,
+      type: normalizedType,
+      employment_type: normalizedEmpType,
       required_skills: parsedSkills,
       eligible_branches: parsedBranches,
       eligible_grad_years: parsedGradYears
