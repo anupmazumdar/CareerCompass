@@ -32,6 +32,25 @@ async function ensureDbReady() {
 }
 
 module.exports = async (req, res) => {
-  await ensureDbReady();
-  return app(req, res);
+  try {
+    await ensureDbReady();
+    return app(req, res);
+  } catch (err) {
+    console.error('❌ Vercel Serverless Invocation Exception:', err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: 'SERVERLESS_INVOCATION_ERROR',
+          message: err.message || 'Internal serverless handler exception',
+          details: process.env.NODE_ENV === 'production' ? undefined : err.stack
+        })
+      );
+    }
+  }
 };
+
