@@ -5,15 +5,14 @@ if (apiUrl === '""' || apiUrl === "''" || apiUrl === '/') {
   apiUrl = '';
 }
 if (!apiUrl && !isProduction) {
-  apiUrl = 'http://localhost:3001';
+  apiUrl = 'http://localhost:5000';
 }
 export const API_BASE_URL = apiUrl;
 
-export const THEME_KEY = 'talentai_theme';
-export const AUTH_STORAGE_KEY = 'talentai_auth';
+export const THEME_KEY = 'careercompass_theme';
+export const AUTH_STORAGE_KEY = 'careercompass_auth';
 
 export const ROLES = {
   STUDENT: 'student',
-  RECRUITER: 'recruiter',
   ADMIN: 'admin'
 };

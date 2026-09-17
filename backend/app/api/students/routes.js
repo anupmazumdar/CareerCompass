@@ -151,6 +151,17 @@ router.delete('/me/certifications/:id', authenticateToken, requireRole('student'
   }
 });
 
+// GET /api/students/me/skills and GET /api/students/skills
+router.get(['/me/skills', '/skills'], authenticateToken, requireRole('student'), async (req, res, next) => {
+  try {
+    const studentId = await getStudentProfileId(req.user.userId);
+    const skills = await studentRepo.getSkills(studentId);
+    return res.json({ success: true, count: skills.length, data: skills });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/students/me/skills and POST /api/students/skills
 router.post(['/me/skills', '/skills'], authenticateToken, requireRole('student'), validate(skillSchema), async (req, res, next) => {
   try {

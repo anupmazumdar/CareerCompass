@@ -194,19 +194,7 @@ function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
           );
         }
 
-        // Recruiter User
-        await run(
-          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'recruiter', ?, ?, 'active')`,
-          ['recruiter@careercompass.io', defaultPasswordHash, 'Sarah Jenkins', '+91 9876543211']
-        );
-        const recruiterUser = await get('SELECT id FROM users WHERE email = ?', ['recruiter@careercompass.io']);
-        if (recruiterUser) {
-          await run(
-            `INSERT OR IGNORE INTO recruiter_profiles (user_id, company_id, designation, department, is_company_admin) VALUES (?, ?, ?, ?, 1)`,
-            [recruiterUser.id, companyMap.get('Razorpay') || 1, 'Senior Technical Recruiter', 'Talent Acquisition']
-          );
-        }
-        const recruiterProfile = await get('SELECT id FROM recruiter_profiles WHERE user_id = ?', [recruiterUser?.id]);
+        // Recruiter User removed for CareerCompass student-only platform
 
         // Demo Student: Alex Chen
         await run(
@@ -994,7 +982,7 @@ function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
               opp.stipend_range || null,
               opp.deadline,
               opp.apply_link,
-              recruiterUser?.id || null
+              null
             ]
           );
         }

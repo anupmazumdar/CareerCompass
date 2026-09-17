@@ -105,7 +105,7 @@ class StudentRepository {
         (data.github_url !== undefined || data.githubUrl !== undefined) ? (data.github_url || data.githubUrl) : null,
         (data.linkedin_url !== undefined || data.linkedinUrl !== undefined) ? (data.linkedin_url || data.linkedinUrl) : null,
         (data.portfolio_url !== undefined || data.portfolioUrl !== undefined) ? (data.portfolio_url || data.portfolioUrl) : null,
-        (data.preferred_role !== undefined || data.preferredRole !== undefined) ? (data.preferred_role || data.preferredRole) : null,
+        (data.preferred_role !== undefined || data.preferredRole !== undefined || data.targetRole !== undefined) ? (data.preferred_role || data.preferredRole || data.targetRole) : null,
         prefRolesVal,
         (data.preferred_location !== undefined || data.preferredLocation !== undefined) ? (data.preferred_location || data.preferredLocation) : null,
         prefLocsVal,
@@ -327,18 +327,39 @@ class StudentRepository {
   calculateProfileCompleteness(profile) {
     const checklist = [];
 
-    // 1. Academic & Core Details (25%)
-    const hasAcademic = Boolean(
-      profile.college && profile.degree && profile.branch && profile.cgpa !== null && profile.cgpa !== undefined
-    );
+    // 0. Base Student Registration (10%)
+    const hasAccount = Boolean(profile.user_id || profile.id);
     checklist.push({
-      key: 'academics',
-      label: 'Academic Details (College, Degree, Branch, CGPA)',
-      completed: hasAcademic,
-      weight: 25
+      key: 'account',
+      label: 'Student Account Registered',
+      completed: hasAccount,
+      weight: 10
     });
 
-    // 2. Skills Inventory (20%)
+    // 1. Personal Details, Social Profiles & Career Preferences (10%)
+    const hasSocial = Boolean(profile.github_url || profile.linkedin_url || profile.portfolio_url);
+    const hasPreferences = Boolean(profile.preferred_role || profile.preferred_roles || profile.targetRole);
+    const hasPersonalDetails = Boolean(profile.headline || profile.bio || profile.location);
+    const hasSocialAndPref = Boolean((hasSocial || hasPersonalDetails) && (hasPreferences || hasPersonalDetails));
+    checklist.push({
+      key: 'social_preferences',
+      label: 'Personal Bio, Social Profiles & Career Preferences',
+      completed: hasSocialAndPref,
+      weight: 10
+    });
+
+    // 2. Experience or Formal Education History (10%)
+    const hasEduHistory = Array.isArray(profile.education) && profile.education.length > 0;
+    const hasExp = Array.isArray(profile.experience) && profile.experience.length > 0;
+    const hasHistory = hasEduHistory || hasExp;
+    checklist.push({
+      key: 'history',
+      label: 'Experience or Formal Education History',
+      completed: hasHistory,
+      weight: 10
+    });
+
+    // 3. Skills Inventory (20%)
     const skillCount = Array.isArray(profile.skills) ? profile.skills.length : 0;
     const hasSkills = skillCount >= 3;
     checklist.push({
@@ -348,7 +369,7 @@ class StudentRepository {
       weight: 20
     });
 
-    // 3. Projects Showcase (20%)
+    // 4. Projects Showcase (20%)
     const projCount = Array.isArray(profile.projects) ? profile.projects.length : 0;
     const hasProjects = projCount >= 1;
     checklist.push({
@@ -358,18 +379,17 @@ class StudentRepository {
       weight: 20
     });
 
-    // 4. Experience or Education History (15%)
-    const hasEduHistory = Array.isArray(profile.education) && profile.education.length > 0;
-    const hasExp = Array.isArray(profile.experience) && profile.experience.length > 0;
-    const hasHistory = hasEduHistory || hasExp;
+    // 5. Certifications & Credentials (10%)
+    const certCount = Array.isArray(profile.certifications) ? profile.certifications.length : 0;
+    const hasCert = certCount >= 1;
     checklist.push({
-      key: 'history',
-      label: 'Experience or Formal Education History',
-      completed: hasHistory,
-      weight: 15
+      key: 'certifications',
+      label: `Certifications & Credentials (At least 1 certification, currently ${certCount})`,
+      completed: hasCert,
+      weight: 10
     });
 
-    // 5. Resume Upload (10%)
+    // 6. Resume Upload (10%)
     const hasResume = Boolean(
       (Array.isArray(profile.resumes) && profile.resumes.length > 0) || profile.resume_id
     );
@@ -380,14 +400,14 @@ class StudentRepository {
       weight: 10
     });
 
-    // 6. Social Profiles & Career Preferences (10%)
-    const hasSocial = Boolean(profile.github_url || profile.linkedin_url || profile.portfolio_url);
-    const hasPreferences = Boolean(profile.preferred_role || profile.preferred_roles);
-    const hasSocialAndPref = hasSocial && hasPreferences;
+    // 7. Academic & Core Details (10%)
+    const hasAcademic = Boolean(
+      profile.college && profile.degree && profile.branch && profile.cgpa !== null && profile.cgpa !== undefined
+    );
     checklist.push({
-      key: 'social_preferences',
-      label: 'Social Profiles & Career Preferences',
-      completed: hasSocialAndPref,
+      key: 'academics',
+      label: 'Academic Details (College, Degree, Branch, CGPA)',
+      completed: hasAcademic,
       weight: 10
     });
 

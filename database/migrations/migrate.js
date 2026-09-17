@@ -78,6 +78,58 @@ async function applyIncrementalMigrations(db) {
   // applications extensions
   await addColumnIfNotExists(db, 'applications', 'resume_version_used TEXT', 'resume_version_used');
   await addColumnIfNotExists(db, 'applications', 'reminder_date DATETIME', 'reminder_date');
+
+  // Ensure applications table CHECK constraint includes 'offer'
+  await new Promise((resolve, reject) => {
+    db.get('SELECT sql FROM sqlite_master WHERE name = "applications"', (err, row) => {
+      if (err) return reject(err);
+      if (row && row.sql && !row.sql.includes("'offer'")) {
+        console.log('  🔄 Upgrading applications table CHECK constraint to include "offer"...');
+        db.exec(`
+          BEGIN TRANSACTION;
+          CREATE TABLE applications_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            opportunity_id INTEGER REFERENCES opportunities(id) ON DELETE CASCADE,
+            job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+            student_id INTEGER NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+            resume_id INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
+            resume_version_used TEXT,
+            status TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('saved', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn', 'under_review', 'shortlisted', 'selected')),
+            match_score REAL DEFAULT 0,
+            cover_note TEXT,
+            notes TEXT,
+            reminder_date DATETIME,
+            pipeline_stage TEXT DEFAULT 'profile',
+            applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            applied_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(job_id, student_id)
+          );
+          INSERT INTO applications_new (
+            id, opportunity_id, job_id, student_id, resume_id, resume_version_used,
+            status, match_score, cover_note, notes, reminder_date, pipeline_stage, applied_at, applied_date, updated_at
+          )
+          SELECT
+            id, opportunity_id, job_id, student_id, resume_id, resume_version_used,
+            status, match_score, cover_note, notes, reminder_date, pipeline_stage, applied_at, applied_date, updated_at
+          FROM applications;
+          DROP TABLE applications;
+          ALTER TABLE applications_new RENAME TO applications;
+          CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
+          CREATE INDEX IF NOT EXISTS idx_applications_opportunity ON applications(opportunity_id);
+          CREATE INDEX IF NOT EXISTS idx_applications_student ON applications(student_id);
+          CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
+          COMMIT;
+        `, (upgradeErr) => {
+          if (upgradeErr) return reject(upgradeErr);
+          console.log('  ✅ applications table CHECK constraint upgraded with offer status.');
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 function runMigrations(targetPath = DB_PATH) {

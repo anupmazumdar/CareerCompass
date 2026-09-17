@@ -52,15 +52,8 @@ async function seedOpportunitiesAndStudents() {
     recruiterUser = { id: uRes.lastID };
   }
 
-  let recruiterProfile = await db.get('SELECT id FROM recruiter_profiles WHERE user_id = ?', [recruiterUser.id]);
-  if (!recruiterProfile) {
-    const rRes = await db.run(
-      `INSERT INTO recruiter_profiles (user_id, company_id, designation, is_company_admin)
-       VALUES (?, ?, 'Lead Campus Recruiter', 1)`,
-      [recruiterUser.id, companyMap.get('Razorpay')]
-    );
-    recruiterProfile = { id: rRes.lastID };
-  }
+  // recruiter_profiles removed in CareerCompass
+  let recruiterProfile = null;
 
   // Helper to resolve skill IDs
   const allSkills = await db.all('SELECT id, canonical_name FROM skills');

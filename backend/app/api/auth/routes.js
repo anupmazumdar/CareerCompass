@@ -29,10 +29,10 @@ router.post('/register', async (req, res, next) => {
     const rawRole = String(role).toLowerCase();
     const normalizedRole = (rawRole === 'candidate' || rawRole === 'student')
       ? 'student'
-      : ((rawRole === 'employer' || rawRole === 'recruiter') ? 'employer' : rawRole);
+      : ((rawRole === 'employer' || rawRole === 'recruiter') ? 'recruiter' : rawRole);
 
-    if (!['student', 'employer'].includes(normalizedRole)) {
-      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Role must be student or employer' });
+    if (!['student', 'recruiter'].includes(normalizedRole)) {
+      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Role must be student or recruiter' });
     }
 
     if (password.length < 8) {
@@ -61,7 +61,7 @@ router.post('/register', async (req, res, next) => {
     if (normalizedRole === 'student') {
       const sp = await studentRepo.createProfile(user.id);
       studentProfileId = sp?.id;
-    } else if (normalizedRole === 'employer') {
+    } else if (normalizedRole === 'recruiter') {
       let comp = null;
       if (resolvedCompanyName) {
         comp = await recruiterRepo.findCompanyByName(resolvedCompanyName);

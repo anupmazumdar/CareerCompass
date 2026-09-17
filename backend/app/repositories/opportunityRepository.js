@@ -38,8 +38,8 @@ class OpportunityRepository {
     }
 
     if (type && type !== 'all') {
-      conditions.push('o.type = ?');
-      params.push(type);
+      conditions.push('(LOWER(o.employment_type) = LOWER(?) OR LOWER(o.type) = LOWER(?))');
+      params.push(type, type);
     }
 
     if (workMode && workMode !== 'all') {
@@ -152,7 +152,7 @@ class OpportunityRepository {
         data.location || 'Remote',
         data.work_mode || data.workMode || 'onsite',
         data.work_mode || data.workMode || 'onsite',
-        data.employment_type || data.employmentType || 'full-time',
+        data.employment_type || data.employmentType || (String(data.type || '').toLowerCase() === 'internship' ? 'internship' : 'full-time'),
         data.experience_level || data.experienceLevel || 'entry',
         (data.min_cgpa !== undefined || data.minCgpa !== undefined) ? Number(data.min_cgpa !== undefined ? data.min_cgpa : data.minCgpa) : 0.0,
         eligibleBranchesJson,
@@ -302,8 +302,14 @@ class OpportunityRepository {
       parsedGradYears = (row.eligible_grad_years || 'All').split(',').map(s => s.trim()).filter(Boolean);
     }
 
+    const isIntern = (row.employment_type && row.employment_type.toLowerCase() === 'internship') || (row.type && row.type.toLowerCase() === 'internship');
+    const normalizedEmpType = isIntern ? 'internship' : (row.employment_type || 'full-time');
+    const normalizedType = isIntern ? 'Internship' : (row.type || 'Job');
+
     return {
       ...row,
+      type: normalizedType,
+      employment_type: normalizedEmpType,
       required_skills: parsedSkills,
       eligible_branches: parsedBranches,
       eligible_grad_years: parsedGradYears
@@ -358,7 +364,13 @@ class OpportunityRepository {
     let eligibilityScore = 0;
     // CGPA (10 pts)
     const minCgpa = opportunity.min_cgpa !== null && opportunity.min_cgpa !== undefined ? Number(opportunity.min_cgpa) : null;
-    const studentCgpa = studentProfile.cgpa !== null && studentProfile.cgpa !== undefined ? Number(studentProfile.cgpa) : null;
+    let studentCgpa = studentProfile.cgpa !== null && studentProfile.cgpa !== undefined ? Number(studentProfile.cgpa) : null;
+    if (!studentCgpa && Array.isArray(studentProfile.education) && studentProfile.education.length > 0) {
+      for (const edu of studentProfile.education) {
+        const parsed = parseFloat(edu.grade || edu.cgpa);
+        if (!isNaN(parsed)) { studentCgpa = parsed; break; }
+      }
+    }
     if (minCgpa === null || minCgpa === 0) {
       eligibilityScore += 10;
     } else if (studentCgpa !== null && studentCgpa >= minCgpa) {
@@ -367,13 +379,22 @@ class OpportunityRepository {
 
     // Branch (5 pts)
     const branches = opportunity.eligible_branches || ['All'];
-    const studentBranch = (studentProfile.branch || '').toLowerCase();
-    const isBranchEligible = branches.some((b) => b.toLowerCase() === 'all' || (studentBranch && studentBranch.includes(b.toLowerCase())));
+    let studentBranch = (studentProfile.branch || '').toLowerCase();
+    if (!studentBranch && Array.isArray(studentProfile.education) && studentProfile.education.length > 0) {
+      studentBranch = (studentProfile.education[0].field_of_study || studentProfile.education[0].field || '').toLowerCase();
+    }
+    const isBranchEligible = branches.some((b) => {
+      const bLower = b.toLowerCase();
+      return bLower === 'all' || (studentBranch && (studentBranch.includes(bLower) || bLower.includes(studentBranch) || (studentBranch.includes('computer') && bLower.includes('computer'))));
+    });
     if (isBranchEligible) eligibilityScore += 5;
 
     // Graduation Year (5 pts)
     const gradYears = (opportunity.eligible_grad_years || ['All']).map(String);
-    const studentGradYear = studentProfile.graduation_year ? String(studentProfile.graduation_year) : '';
+    let studentGradYear = studentProfile.graduation_year ? String(studentProfile.graduation_year) : '';
+    if (!studentGradYear && Array.isArray(studentProfile.education) && studentProfile.education.length > 0) {
+      studentGradYear = String(studentProfile.education[0].end_year || studentProfile.education[0].end || '');
+    }
     const isYearEligible = gradYears.includes('All') || (studentGradYear && gradYears.includes(studentGradYear));
     if (isYearEligible) eligibilityScore += 5;
 
@@ -422,9 +443,11 @@ class OpportunityRepository {
     const completenessScore = Math.round(completeness * 0.10);
 
     const totalScore = Math.min(100, Math.max(0, skillScore + eligibilityScore + preferenceScore + completenessScore));
+    const grade = totalScore >= 80 ? 'A' : totalScore >= 70 ? 'B' : totalScore >= 50 ? 'C' : 'D';
 
     return {
       score: totalScore,
+      grade,
       skillScore,
       eligibilityScore,
       preferenceScore,

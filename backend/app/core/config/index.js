@@ -21,7 +21,7 @@ if (isProduction) {
 }
 
 module.exports = {
-  port: Number(process.env.PORT || 3001),
+  port: Number(process.env.PORT || 5000),
   nodeEnv,
   jwt: {
     secret: process.env.JWT_SECRET || 'default_jwt_development_secret_key_change_in_production',
