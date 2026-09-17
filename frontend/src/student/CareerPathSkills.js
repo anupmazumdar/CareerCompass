@@ -109,8 +109,10 @@ export function CareerPathSkills() {
     try {
       setAnalyzing(true);
       const res = await api.get(`/api/skills/gap-analysis?role=${roleKey}`);
-      if (res && res.success && res.data) {
+      if (res?.success && res.data?.targetRole) {
         setGapAnalysis(res.data);
+      } else {
+        setGapAnalysis(null);
       }
     } catch (err) {
       console.error('Failed to compute gap analysis:', err);
@@ -225,6 +227,11 @@ export function CareerPathSkills() {
     return matchesSearch && !alreadyHas;
   });
 
+  const hasValidGapAnalysis = Boolean(
+    gapAnalysis?.targetRole &&
+    typeof gapAnalysis.targetRole === 'object'
+  );
+
   const getScoreColor = (score) => {
     if (score >= 75) return 'text-emerald-600 stroke-emerald-500';
     if (score >= 50) return 'text-indigo-600 stroke-indigo-500';
@@ -303,15 +310,16 @@ export function CareerPathSkills() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {roles.map((r, idx) => {
-              const Icon = ROLE_ICONS[r.id] || Compass;
-              const isSelected = selectedRole === r.id;
+              const roleKey = r.id || r.key;
+              const Icon = ROLE_ICONS[roleKey] || Compass;
+              const isSelected = selectedRole === roleKey;
               const isLastOdd = idx === roles.length - 1 && roles.length % 2 === 1;
 
               return (
                 <button
                   key={r.id || r.name || idx}
                   type="button"
-                  onClick={() => setSelectedRole(r.id)}
+                  onClick={() => setSelectedRole(roleKey)}
                   className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between space-y-3 ${
                     isLastOdd ? 'col-span-2 sm:col-span-1 ' : ''
                   }${
@@ -330,10 +338,10 @@ export function CareerPathSkills() {
                   </div>
                   <div>
                     <h3 className={`text-xs font-bold leading-snug ${isSelected ? 'text-indigo-950' : 'text-slate-800'}`}>
-                      {r.title}
+                      {r.title || r.name}
                     </h3>
                     <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                      {r.criticalSkills?.length + r.recommendedSkills?.length} benchmark skills
+                      {(r.criticalSkills?.length || 0) + (r.recommendedSkills?.length || (r.required_skills?.length || 0))} benchmark skills
                     </p>
                   </div>
                 </button>
@@ -343,7 +351,7 @@ export function CareerPathSkills() {
         </div>
 
         {/* Role Readiness Score Card & Summary */}
-        {gapAnalysis && (
+        {hasValidGapAnalysis && (
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="flex items-center gap-6">
               {/* Radial Score Gauge */}
@@ -378,10 +386,10 @@ export function CareerPathSkills() {
 
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {gapAnalysis.targetRole.title} Profile Fit
+                  {gapAnalysis.targetRole?.title || 'Target Role'} Profile Fit
                 </h2>
                 <p className="text-xs text-slate-500 max-w-lg mt-1 leading-relaxed">
-                  {gapAnalysis.targetRole.description}
+                  {gapAnalysis.targetRole?.description || 'Complete your profile to receive role-specific skill analysis.'}
                 </p>
 
                 <div className="flex items-center gap-4 mt-3 text-xs">
@@ -409,7 +417,7 @@ export function CareerPathSkills() {
         )}
 
         {/* Split Grid: Gaps Breakdown vs Curated Learning Resources */}
-        {gapAnalysis && (
+        {hasValidGapAnalysis && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left 7 Columns: Skills Gap Analyzer */}
             <div className="lg:col-span-7 space-y-6">
@@ -428,7 +436,7 @@ export function CareerPathSkills() {
                 {gapAnalysis.missingSkills?.filter(m => m.priority === 'critical').length === 0 ? (
                   <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100 text-xs font-semibold text-emerald-800 flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-emerald-600" />
-                    You possess all critical core skills for {gapAnalysis.targetRole.title}!
+                    You possess all critical core skills for {gapAnalysis.targetRole?.title || 'Target Role'}!
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -505,7 +513,7 @@ export function CareerPathSkills() {
                       Skills Already Acquired ({gapAnalysis.acquiredSkills?.length || 0})
                     </h3>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">Matched to {gapAnalysis.targetRole.title}</span>
+                  <span className="text-[11px] text-slate-400 font-medium">Matched to {gapAnalysis.targetRole?.title || 'Target Role'}</span>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
