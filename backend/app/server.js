@@ -78,35 +78,25 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/recruiters', recruiterRoutes);
 app.use('/api/companies', companyRoutes);
 
-// 4. Legacy Route Aliases for Compatibility
-// Legacy candidate applications alias
-app.get('/api/candidates', async (req, res, next) => {
-  try {
-    const candidates = await db.all(
-      `SELECT sp.id, sp.headline as position, u.full_name as name, u.email,
-              (SELECT COUNT(*) FROM applications WHERE student_id = sp.id) as totalScore,
-              'review' as status
-       FROM student_profiles sp
-       JOIN users u ON sp.user_id = u.id`
-    );
-    return res.json({ success: true, candidates });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Legacy quiz questions alias
-app.get('/api/admin/questions', async (req, res, next) => {
-  try {
-    const questions = await db.all('SELECT * FROM quiz_questions ORDER BY id ASC');
-    return res.json({
-      success: true,
-      questions: questions.map(q => ({ ...q, options: JSON.parse(q.options || '[]') }))
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+// 4. Legacy Route Aliases & Security Deprecations
+//
+// ORIGINAL VULNERABILITY (Issue 1 - CRITICAL):
+//   app.get('/api/candidates', ...) was mounted directly on the Express app with no
+//   authentication middleware, leaking student PII (name, email, profile ID, application count)
+//   to unauthenticated callers.
+//
+// FIX:
+//   Removed the legacy alias entirely. Confirmed frontend/src has no remaining callers.
+//   Legitimate recruiter access is exclusively available through company-scoped, verified
+//   endpoints (e.g. GET /api/matching/jobs/:id/candidates protected by verifyCandidateAccess).
+//
+// ORIGINAL VULNERABILITY (Issue 3 - MEDIUM):
+//   app.get('/api/admin/questions', ...) was mounted directly on the Express app, bypassing
+//   the router-level authenticateToken and requireRole('admin') guard in api/admin/routes.js.
+//
+// FIX:
+//   Removed the bypass route from server.js and moved /questions into api/admin/routes.js
+//   where it inherits the mandatory authenticateToken and requireRole('admin') middleware.
 
 // 5. Error Handlers
 app.use(notFoundHandler);

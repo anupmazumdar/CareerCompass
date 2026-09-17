@@ -79,6 +79,26 @@ async function applyIncrementalMigrations(db) {
   await addColumnIfNotExists(db, 'applications', 'resume_version_used TEXT', 'resume_version_used');
   await addColumnIfNotExists(db, 'applications', 'reminder_date DATETIME', 'reminder_date');
 
+  // Token persistence tables for serverless auth support
+  await new Promise((resolve, reject) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS revoked_tokens (
+        jti TEXT PRIMARY KEY,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+    `, (err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+
   // Ensure applications table CHECK constraint includes 'offer'
   await new Promise((resolve, reject) => {
     db.get('SELECT sql FROM sqlite_master WHERE name = "applications"', (err, row) => {

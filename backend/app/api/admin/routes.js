@@ -111,4 +111,23 @@ router.get('/audit-logs', async (req, res, next) => {
   }
 });
 
+// ORIGINAL VULNERABILITY:
+//   app.get('/api/admin/questions', ...) was mounted directly on the Express app in server.js,
+//   bypassing the router-level authenticateToken and requireRole('admin') middleware. Any
+//   unauthenticated user could fetch quiz questions and internal assessment data.
+//
+// FIX:
+//   Moved route into api/admin/routes.js so it inherits router.use(authenticateToken, requireRole('admin')).
+router.get('/questions', async (req, res, next) => {
+  try {
+    const questions = await db.all('SELECT * FROM quiz_questions ORDER BY id ASC');
+    return res.json({
+      success: true,
+      questions: questions.map(q => ({ ...q, options: JSON.parse(q.options || '[]') }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

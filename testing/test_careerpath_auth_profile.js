@@ -114,7 +114,7 @@ async function runTests() {
 
     assert.strictEqual(regRes.status, 201, `Registration should return 201, got ${regRes.status}`);
     assert(regRes.data.data.accessToken, 'Should return accessToken');
-    assert(regRes.data.data.refreshToken, 'Should return refreshToken');
+    assert.strictEqual(regRes.data.data.refreshToken, undefined, 'refreshToken must NOT be returned in response body');
     const setCookie = regRes.headers['set-cookie'];
     assert(setCookie && setCookie.some(c => c.includes('refreshToken=') && c.includes('HttpOnly')), 'Should set httpOnly refreshToken cookie');
     console.log('✅ Student registered successfully with httpOnly cookie');

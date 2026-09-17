@@ -37,7 +37,7 @@ test('Auth Integration - Register, Login, Me, and Error Handling', async () => {
   const regData = await regRes.json();
   assert.equal(regData.success, true);
   assert.ok(regData.data.accessToken);
-  assert.ok(regData.data.refreshToken);
+  assert.equal(regData.data.refreshToken, undefined, 'refreshToken must not be exposed in JSON response body');
   assert.equal(regData.data.user.role, 'student');
 
   // 2. Duplicate registration attempt -> 409 Conflict

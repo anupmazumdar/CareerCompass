@@ -221,10 +221,28 @@ router.patch('/:id/status', authenticateToken, validate(updateStatusSchema), asy
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
     }
 
+    // ORIGINAL VULNERABILITY:
+    //   PATCH /:id/status only checked ownership when req.user.role === 'student'.
+    //   There was no check verifying that a recruiter/employer caller's company owns
+    //   the job tied to this application. Consequently, any authenticated recruiter
+    //   could modify another company's applicant records (IDOR / broken object authorization).
+    //
+    // FIX:
+    //   Add company ownership verification matching GET /:id: lookup recruiter profile,
+    //   fetch job tied to application.job_id, and reject with 403 Forbidden if job.company_id
+    //   does not match recruiter.company_id.
     if (req.user.role === 'student') {
       const student = await studentRepo.findByUserId(req.user.userId);
       if (application.student_id !== student?.id) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
+      }
+    } else if (req.user.role === 'recruiter' || req.user.role === 'employer') {
+      const recruiter = await recruiterRepo.findByUserId(req.user.userId);
+      if (application.job_id) {
+        const job = await jobRepo.findById(application.job_id);
+        if (job?.company_id !== recruiter?.company_id) {
+          return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
+        }
       }
     }
 

@@ -113,15 +113,23 @@ router.post('/register', async (req, res, next) => {
       recruiterProfileId,
       companyId
     });
-    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
+    // ORIGINAL VULNERABILITY:
+    //   The refresh token was returned in the JSON response body (data.refreshToken)
+    //   in addition to being set in the httpOnly cookie. JavaScript clients and potential
+    //   XSS vectors could access the refresh token from memory/DOM, defeating the protection
+    //   provided by httpOnly cookies.
+    //
+    // FIX:
+    //   Stop returning refreshToken in the JSON response body. Keep issuing it exclusively
+    //   via the secure, httpOnly, sameSite cookie.
+    await issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
 
     return res.status(201).json({
       success: true,
       message: 'Account created successfully',
       data: {
         user: { id: user.id, email: user.email, role: user.role, fullName: user.full_name, studentProfileId, recruiterProfileId, companyId },
-        accessToken,
-        refreshToken
+        accessToken
       }
     });
   } catch (err) {
@@ -172,14 +180,22 @@ router.post('/login', async (req, res, next) => {
       recruiterProfileId,
       companyId
     });
-    const refreshToken = issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
+    // ORIGINAL VULNERABILITY:
+    //   The refresh token was returned in the JSON response body (data.refreshToken)
+    //   in addition to being set in the httpOnly cookie. JavaScript clients and potential
+    //   XSS vectors could access the refresh token from memory/DOM, defeating the protection
+    //   provided by httpOnly cookies.
+    //
+    // FIX:
+    //   Stop returning refreshToken in the JSON response body. Keep issuing it exclusively
+    //   via the secure, httpOnly, sameSite cookie.
+    await issueRefreshToken({ userId: user.id, email: user.email, role: user.role }, res);
 
     return res.json({
       success: true,
       data: {
         user: { id: user.id, email: user.email, role: user.role, fullName: user.full_name, studentProfileId, recruiterProfileId, companyId },
-        accessToken,
-        refreshToken
+        accessToken
       }
     });
   } catch (err) {
