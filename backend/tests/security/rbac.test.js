@@ -13,7 +13,7 @@ let baseUrl;
 test.before(async () => {
   server = await startServer(0);
   const port = server.address().port;
-  baseUrl = `http://localhost:${port}`;
+  baseUrl = `http://127.0.0.1:${port}`;
 });
 
 test.after(async () => {

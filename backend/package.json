@@ -9,7 +9,7 @@
     "dev": "nodemon app/server.js",
     "db:migrate": "node ../database/migrations/migrate.js",
     "db:seed": "node ../database/seeds/seed.js",
-    "test": "node --test tests/unit/*.test.js tests/integration/*.test.js tests/security/*.test.js tests/e2e/*.test.js"
+    "test": "node --test --test-concurrency=1 tests/unit/*.test.js tests/integration/*.test.js tests/security/*.test.js tests/e2e/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
