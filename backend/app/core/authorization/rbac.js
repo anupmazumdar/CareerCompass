@@ -87,14 +87,41 @@ async function verifyCandidateAccess(req, res, next) {
       });
     }
 
-    // Employer / recruiter can only view candidate if student applied to an opportunity or job at employer's company
+    // Employer / recruiter can only view candidate if:
+    //   (a) they are associated with a company
+    //   (b) that company has verification_status = 'verified'  <-- SECURITY FIX (Fix 1, part 3)
+    //   (c) the student applied to a job at that company
+    //
+    // ORIGINAL VULNERABILITY: The check only verified that an application existed
+    // for the company, but did NOT verify whether the company itself was verified.
+    // An attacker who registered a new (unverified) company could immediately see
+    // candidate PII by posting a dummy job and receiving an application.
+    //
+    // FIX: Fetch the company row and assert verification_status = 'verified' before
+    // allowing access. Unverified / pending companies cannot access candidate data.
     if (normalizedUserRole === 'employer') {
-      const recruiter = await db.get('SELECT company_id FROM recruiter_profiles WHERE user_id = ?', [currentUser.userId]);
+      const recruiter = await db.get(
+        `SELECT rp.company_id, c.verification_status
+         FROM recruiter_profiles rp
+         LEFT JOIN companies c ON rp.company_id = c.id
+         WHERE rp.user_id = ?`,
+        [currentUser.userId]
+      );
+
       if (!recruiter || !recruiter.company_id) {
         return res.status(403).json({
           success: false,
           error: 'FORBIDDEN',
-          message: 'Recruiter is not associated with any verified company.'
+          message: 'Recruiter is not associated with any company.'
+        });
+      }
+
+      // SECURITY: Only verified companies may access candidate PII
+      if (recruiter.verification_status !== 'verified') {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN',
+          message: 'Your company account is pending verification. Candidate access is not permitted until an administrator verifies your company.'
         });
       }
 

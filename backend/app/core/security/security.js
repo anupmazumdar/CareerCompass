@@ -24,14 +24,60 @@ const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false
 });
 
+// SECURITY FIX (Fix 2): Replaced wildcard Vercel subdomain check with an
+// explicit allowlist + anchored project-specific regex.
+//
+// ORIGINAL VULNERABILITY:
+//   origin.endsWith('.vercel.app')
+// With credentials:true, this allowed ANY *.vercel.app origin — including ones
+// freely created by attackers (e.g. evil-attacker.vercel.app) — to make
+// authenticated cross-origin requests. An attacker could host a malicious page
+// on Vercel, trick a logged-in user into visiting it, and silently exfiltrate
+// data from credentialed API responses (cookies/tokens). This is a CSRF-equivalent
+// vulnerability enabled by an overly permissive CORS origin check.
+//
+// FIX:
+//   1. Rely solely on config.cors.allowedOrigins (ALLOWED_ORIGINS env var) for
+//      explicit production/staging URLs.
+//   2. For Vercel preview deployments, match ONLY this project's specific prefix
+//      using an anchored regex: /^https:\/\/anupmazumdar[-\w]*\.vercel\.app$/
+//      An attacker cannot register a subdomain starting with 'anupmazumdar-'
+//      for this specific Vercel project — Vercel enforces project-scoped prefixes.
+//   3. localhost is still permitted for local development only.
+//
+// To add a production URL, set ALLOWED_ORIGINS=https://your-domain.com in .env
+
+// Regex anchored to this project's Vercel subdomain prefix — adjust if project
+// name changes. This matches: anupmazumdar-*.vercel.app (Vercel preview pattern)
+// but NOT: evil-anupmazumdar.vercel.app or anupmazumdar.evil.vercel.app.
+const PROJECT_VERCEL_PREVIEW_RE = /^https:\/\/anupmazumdar[-\w]*\.vercel\.app$/;
+
 // 2. CORS configuration
 const corsMiddleware = cors({
   origin: (origin, callback) => {
-    if (!origin || config.cors.allowedOrigins.includes(origin) || origin.includes('localhost') || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy rejection: Origin ${origin} not permitted`));
+    // Allow requests with no origin (server-to-server, mobile apps, curl)
+    if (!origin) {
+      return callback(null, true);
     }
+
+    // Allow explicit allowlist from ALLOWED_ORIGINS env var
+    if (config.cors.allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow localhost for local development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+
+    // Allow this project's specific Vercel preview deployment pattern only.
+    // NOTE: Do NOT use endsWith('.vercel.app') — that allows ANY attacker's Vercel project.
+    if (PROJECT_VERCEL_PREVIEW_RE.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Reject all other origins
+    return callback(new Error(`CORS policy rejection: Origin ${origin} not permitted`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

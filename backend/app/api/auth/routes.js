@@ -62,15 +62,46 @@ router.post('/register', async (req, res, next) => {
       const sp = await studentRepo.createProfile(user.id);
       studentProfileId = sp?.id;
     } else if (normalizedRole === 'recruiter') {
-      let comp = null;
+      let isCompanyAdmin = false;
+
+      // SECURITY FIX (Fix 1): Prevent privilege escalation during recruiter registration.
+      //
+      // ORIGINAL VULNERABILITIES:
+      //   1. When joining an EXISTING company: code unconditionally set isCompanyAdmin: true.
+      //      Anyone could register claiming to be an admin of any existing company (e.g. Google)
+      //      just by typing the company name correctly. No ownership check or admin approval existed.
+      //   2. When creating a NEW company: code explicitly passed verificationStatus: 'verified',
+      //      allowing unvetted self-registered companies to immediately access candidate PII.
+      //
+      // FIX:
+      //   1. When companyName matches an EXISTING company:
+      //      Assign isCompanyAdmin: false. The recruiter joins as a standard member (pending internal admin approval).
+      //   2. When creating a NEW company:
+      //      verificationStatus: 'pending' (default in recruiterRepository).
+      //      Only platform administrators can verify companies.
+      //   3. Downstream candidate PII protection:
+      //      verifyCandidateAccess in core/authorization/rbac.js asserts company verification_status === 'verified'.
       if (resolvedCompanyName) {
-        comp = await recruiterRepo.findCompanyByName(resolvedCompanyName);
-        if (!comp) {
-          comp = await recruiterRepo.createCompany({ name: resolvedCompanyName, verificationStatus: 'verified' });
+        const existingCompany = await recruiterRepo.findCompanyByName(resolvedCompanyName);
+        if (existingCompany) {
+          // Existing company match: do NOT grant company admin privileges
+          companyId = existingCompany.id;
+          isCompanyAdmin = false;
+        } else {
+          // New company: create with verificationStatus = 'pending' (never auto-verified)
+          const newCompany = await recruiterRepo.createCompany({
+            name: resolvedCompanyName,
+            verificationStatus: 'pending'
+          });
+          companyId = newCompany?.id || null;
+          isCompanyAdmin = true;
         }
       }
-      companyId = comp?.id || null;
-      const rp = await recruiterRepo.createProfile(user.id, { companyId, isCompanyAdmin: true });
+
+      const rp = await recruiterRepo.createProfile(user.id, {
+        companyId,
+        isCompanyAdmin
+      });
       recruiterProfileId = rp?.id;
     }
 
