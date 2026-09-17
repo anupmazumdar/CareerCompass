@@ -4,8 +4,19 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
+let pdfParse;
+try {
+  pdfParse = require('pdf-parse');
+} catch (e) {
+  console.warn('⚠️ pdf-parse not available:', e.message);
+}
+
+let mammoth;
+try {
+  mammoth = require('mammoth');
+} catch (e) {
+  console.warn('⚠️ mammoth not available:', e.message);
+}
 const db = require('../../core/database/connection');
 const { authenticateToken } = require('../../core/authentication/auth');
 const resumeService = require('../../services/resume/resumeService');

@@ -24,7 +24,12 @@ if (!fs.existsSync(DATA_DIR)) {
   }
 }
 
-const DB_PATH = process.env.DB_PATH || (isServerless ? path.join(os.tmpdir(), 'talentai.db') : path.join(DATA_DIR, 'talentai.db'));
+let DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'talentai.db');
+if (isServerless) {
+  if (!process.env.DB_PATH || !process.env.DB_PATH.startsWith(os.tmpdir())) {
+    DB_PATH = path.join(os.tmpdir(), 'talentai.db');
+  }
+}
 
 
 function getTableColumns(db, table) {

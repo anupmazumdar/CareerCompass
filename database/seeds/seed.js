@@ -35,7 +35,12 @@ if (!fs.existsSync(DATA_DIR)) {
     // Read-only filesystem in serverless
   }
 }
-const DEFAULT_DB_PATH = process.env.DB_PATH || (isServerless ? path.join(os.tmpdir(), 'talentai.db') : path.join(DATA_DIR, 'talentai.db'));
+let DEFAULT_DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'talentai.db');
+if (isServerless) {
+  if (!process.env.DB_PATH || !process.env.DB_PATH.startsWith(os.tmpdir())) {
+    DEFAULT_DB_PATH = path.join(os.tmpdir(), 'talentai.db');
+  }
+}
 
 
 function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
