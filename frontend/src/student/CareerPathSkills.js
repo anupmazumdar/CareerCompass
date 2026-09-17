@@ -110,7 +110,37 @@ export function CareerPathSkills() {
       setAnalyzing(true);
       const res = await api.get(`/api/skills/gap-analysis?role=${roleKey}`);
       if (res && res.success && res.data) {
-        setGapAnalysis(res.data);
+        const roleMeta = roles.find(r => r.id === roleKey);
+        const mappedMissingSkills = Array.isArray(res.data.missingSkills)
+          ? res.data.missingSkills
+          : Array.isArray(res.data.missing_skills)
+          ? res.data.missing_skills.map(skill =>
+              typeof skill === 'string' ? { name: skill, priority: 'recommended' } : skill
+            )
+          : [];
+        const mappedAcquiredSkills = Array.isArray(res.data.acquiredSkills)
+          ? res.data.acquiredSkills
+          : Array.isArray(res.data.matched_skills)
+          ? res.data.matched_skills.map(skill =>
+              typeof skill === 'string'
+                ? { name: skill, proficiency: 'intermediate', priority: 'critical' }
+                : skill
+            )
+          : [];
+
+        setGapAnalysis({
+          ...res.data,
+          targetRole: res.data.targetRole || {
+            id: roleMeta?.id || roleKey,
+            title: roleMeta?.title || roleMeta?.name || roleKey,
+            description: roleMeta?.description || ''
+          },
+          readinessScore: res.data.readinessScore ?? res.data.readiness_percentage ?? 0,
+          acquiredSkills: mappedAcquiredSkills,
+          missingSkills: mappedMissingSkills,
+          acquiredCount: res.data.acquiredCount ?? mappedAcquiredSkills.length,
+          missingCount: res.data.missingCount ?? mappedMissingSkills.length
+        });
       }
     } catch (err) {
       console.error('Failed to compute gap analysis:', err);
@@ -118,7 +148,7 @@ export function CareerPathSkills() {
     } finally {
       setAnalyzing(false);
     }
-  }, []);
+  }, [roles]);
 
   useEffect(() => {
     if (!loading) {
