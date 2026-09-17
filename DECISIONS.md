@@ -8,14 +8,14 @@ This document tracks all critical architectural, security, database, and AI gate
 
  | ID | Topic | Decision | Status | Rationale Summary | 
  | --- | --- | --- | --- | --- | 
- | **DEC-001** | Database Selection | PostgreSQL with parameterized queries via `pg` pool | **PROPOSED** | Relational integrity for applications, profiles, and opportunities; ACID compliance; index support. | 
- | **DEC-002** | Local vs Cloud Database | Neon Serverless Postgres + Docker Compose fallback | **PROPOSED** | Eliminates viva/evaluator installation friction while keeping true PostgreSQL in production. | 
- | **DEC-003** | Auth & Token Storage | Short-lived JWT (15 min) in memory + Refresh Token in `httpOnly`, `Secure`, `SameSite=Strict` cookie | **PROPOSED** | Prevents XSS token theft from `localStorage`; provides automatic silent rotation. | 
- | **DEC-004** | AI Chat State Boundary | React In-Memory State as primary (Page refresh = clean conversation) | **PROPOSED** | Browser `sessionStorage` survives page reloads; in-memory state guarantees the requested clean-slate refresh. | 
- | **DEC-005** | OpenRouter Free Model Fallback | Ranked 6-tier live catalog with provider vs account 429 discrimination | **PROPOSED** | Fetched from live OpenRouter API; falls back across capable models (Gemma 4 31B, Nemotron 3 Super, Nex-N2.5-Pro) on upstream 429. | 
- | **DEC-006** | File Storage Strategy | Cloud Storage (GCS/S3) with MIME + Magic Bytes validation & signed URLs | **PROPOSED** | Never store binary blobs in DB; prevent malicious file upload vulnerabilities. | 
- | **DEC-007** | TalentAI Interoperability | Decoupled UUID-based contracts and standardized status enums | **PROPOSED** | Allows zero-friction recruiter integration later without tight coupling today. | 
- | **DEC-008** | Visual Design System | Intentional Light-First palette (Deep Slate, Bright Indigo, Emerald accents, generous whitespace) | **PROPOSED** | Professional, credible, non-templated light theme designed for academic excellence and student ergonomics. | 
+ | **DEC-001** | Database Selection | SQLite Relational Engine with parameterized SQL abstraction & PostgreSQL DDL compatibility | **IMPLEMENTED** | Relational integrity for applications, student profiles, opportunities, and skills; zero-config local/test execution. | 
+ | **DEC-002** | Zero-Friction Setup | Automated cold-start migration & comprehensive 42+ opportunity seed runner | **IMPLEMENTED** | Evaluator and developer zero-setup experience; automatic ephemeral DB in tests. | 
+ | **DEC-003** | Auth & Token Storage | Single-source JWT authentication via `AuthContext` with role-based route guards & bcryptjs (salt=12) | **IMPLEMENTED** | Prevents fragmented token storage, guards all student routes, and ensures authenticated API requests. | 
+ | **DEC-004** | AI Chat State Boundary | React In-Memory State as primary (Page refresh = clean conversation) | **IMPLEMENTED** | Guarantees requested clean-slate refresh while grounding assistant prompts in student profile data. | 
+ | **DEC-005** | AI Gateway & Fallback | OpenRouter API with local heuristic career advisor fallback | **IMPLEMENTED** | High-availability career guidance without blocking UI when external AI keys are unavailable. | 
+ | **DEC-006** | File Storage & Resume Security | In-Memory buffer upload with MIME + Magic-Bytes validation (`%PDF-`, `PK\x03\x04`), 5MB cap, and relational DB metadata | **IMPLEMENTED** | Validates binary signatures before parsing text and ATS analysis; prevents arbitrary file execution. | 
+ | **DEC-007** | Platform Interoperability | Decoupled relational schemas and standardized status enums (`saved`, `applied`, `interview`, `offer`, `rejected`) | **IMPLEMENTED** | Clean separation of concerns between student discovery and recruiter candidate tracking. | 
+ | **DEC-008** | Visual Design System | Intentional Light-First palette (Deep Slate, Bright Indigo, Emerald accents, responsive navigation) | **IMPLEMENTED** | Professional, accessible design tailored for academic excellence and student ergonomics. | 
 
 ---
 

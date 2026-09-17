@@ -290,12 +290,12 @@ class ApplicationRepository {
     };
 
     rows.forEach(r => {
-      if (counts[r.status] !== undefined) {
-        counts[r.status] = r.count;
-      } else if (r.status === 'screening' || r.status === 'shortlisted') {
+      if (r.status === 'screening' || r.status === 'shortlisted') {
         counts.under_review += r.count;
-      } else if (r.status === 'selected') {
+      } else if (r.status === 'selected' || r.status === 'offer') {
         counts.offer += r.count;
+      } else if (counts[r.status] !== undefined) {
+        counts[r.status] += r.count;
       }
       counts.total += r.count;
     });

@@ -115,6 +115,9 @@ router.get('/', async (req, res, next) => {
           company_name: opp.company || opp.company_name,
           is_saved: savedIds.has(opp.id),
           match_score: match.score,
+          match_grade: match.grade || (match.score >= 80 ? 'A' : match.score >= 70 ? 'B' : 'C'),
+          matched_skills: match.matchedSkills,
+          missing_skills: match.missingSkills,
           match_breakdown: match
         };
       });
@@ -170,6 +173,12 @@ router.get('/:id', async (req, res, next) => {
       isSaved = await opportunityRepo.isOpportunitySaved(studentProfile.id, opp.id);
     }
 
+    const matchAnalysis = match ? {
+      ...match,
+      breakdown: { ...match },
+      explanation: `You have a ${match.score}% match for ${opp.title} at ${opp.company || opp.company_name}. You match ${match.matchedSkills?.length || 0} core requirements with high compatibility.`
+    } : null;
+
     return res.json({
       success: true,
       data: {
@@ -177,7 +186,11 @@ router.get('/:id', async (req, res, next) => {
         company_name: opp.company || opp.company_name,
         is_saved: isSaved,
         match_score: match ? match.score : null,
-        match_breakdown: match
+        match_grade: match ? match.grade : null,
+        matched_skills: match ? match.matchedSkills : [],
+        missing_skills: match ? match.missingSkills : [],
+        match_breakdown: match,
+        match: matchAnalysis
       }
     });
   } catch (err) {

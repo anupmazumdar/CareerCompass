@@ -249,7 +249,8 @@ export function CareerPathApplications() {
         !searchQuery ||
         (app.job_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (app.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus = statusFilter === 'all' || app.status === statusFilter;
+      const normalizedAppStatus = app.status === 'selected' ? 'offer' : app.status;
+      const matchStatus = statusFilter === 'all' || app.status === statusFilter || normalizedAppStatus === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [applications, searchQuery, statusFilter]);
@@ -576,7 +577,7 @@ export function CareerPathApplications() {
                     </tr>
                   ) : (
                     filteredApplications.map(app => {
-                      const stageObj = STAGES.find(s => s.id === app.status) || STAGES[1];
+                      const stageObj = STAGES.find(s => s.id === (app.status === 'selected' ? 'offer' : app.status)) || STAGES[1];
                       return (
                         <tr
                           key={app.id}
