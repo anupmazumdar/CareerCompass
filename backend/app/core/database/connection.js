@@ -35,8 +35,8 @@ function getDatabase(dbPath = DB_PATH) {
     }
   });
 
-  dbInstance.run('PRAGMA foreign_keys = ON;');
-  dbInstance.run('PRAGMA journal_mode = WAL;');
+  dbInstance.run('PRAGMA foreign_keys = ON;', () => {});
+  dbInstance.run('PRAGMA journal_mode = WAL;', () => {});
 
   return dbInstance;
 }
