@@ -47,10 +47,9 @@ const helmetMiddleware = helmet({
 //
 // To add a production URL, set ALLOWED_ORIGINS=https://your-domain.com in .env
 
-// Regex anchored to this project's Vercel subdomain prefix — adjust if project
-// name changes. This matches: anupmazumdar-*.vercel.app (Vercel preview pattern)
-// but NOT: evil-anupmazumdar.vercel.app or anupmazumdar.evil.vercel.app.
-const PROJECT_VERCEL_PREVIEW_RE = /^https:\/\/anupmazumdar[-\w]*\.vercel\.app$/;
+// Regex anchored to this project's Vercel subdomain prefix — matches both
+// anupmazumdar-*.vercel.app and career-compass-*.vercel.app
+const PROJECT_VERCEL_PREVIEW_RE = /^https:\/\/(anupmazumdar|career-compass)[-\w]*\.vercel\.app$/;
 
 // 2. CORS configuration
 const corsMiddleware = cors({

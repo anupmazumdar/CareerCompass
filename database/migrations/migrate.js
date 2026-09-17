@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 let sqlite3;
 try {
   sqlite3 = require('sqlite3').verbose();
@@ -13,12 +14,18 @@ try {
   }
 }
 
-const DATA_DIR = process.env.DB_DIR || path.resolve(__dirname, '../../data');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_ENV);
+const DATA_DIR = process.env.DB_DIR || (isServerless ? os.tmpdir() : path.resolve(__dirname, '../../data'));
 if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (err) {
+    // Read-only filesystem in serverless
+  }
 }
 
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'talentai.db');
+const DB_PATH = process.env.DB_PATH || (isServerless ? path.join(os.tmpdir(), 'talentai.db') : path.join(DATA_DIR, 'talentai.db'));
+
 
 function getTableColumns(db, table) {
   return new Promise((resolve, reject) => {
@@ -154,8 +161,23 @@ async function applyIncrementalMigrations(db) {
 
 function runMigrations(targetPath = DB_PATH) {
   console.log(`🔄 Applying migrations to: ${targetPath}`);
-  const schemaPath = path.resolve(__dirname, '../schema/schema.sql');
-  const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+  const candidatePaths = [
+    path.join(__dirname, '../schema/schema.sql'),
+    path.resolve(__dirname, '../../database/schema/schema.sql'),
+    path.resolve(process.cwd(), 'database/schema/schema.sql')
+  ];
+  let schemaSql = null;
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        schemaSql = fs.readFileSync(p, 'utf8');
+        break;
+      } catch (e) {}
+    }
+  }
+  if (!schemaSql) {
+    throw new Error('Could not locate database/schema/schema.sql in any candidate path.');
+  }
 
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database(targetPath, async (err) => {

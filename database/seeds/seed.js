@@ -25,8 +25,18 @@ try {
   }
 }
 
-const DATA_DIR = process.env.DB_DIR || path.resolve(__dirname, '../../data');
-const DEFAULT_DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'talentai.db');
+const os = require('os');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_ENV);
+const DATA_DIR = process.env.DB_DIR || (isServerless ? os.tmpdir() : path.resolve(__dirname, '../../data'));
+if (!fs.existsSync(DATA_DIR)) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (err) {
+    // Read-only filesystem in serverless
+  }
+}
+const DEFAULT_DB_PATH = process.env.DB_PATH || (isServerless ? path.join(os.tmpdir(), 'talentai.db') : path.join(DATA_DIR, 'talentai.db'));
+
 
 function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
   console.log(`🌱 Seeding database at: ${targetDbPath}`);
