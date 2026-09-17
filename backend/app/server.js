@@ -26,6 +26,9 @@ const resumeRoutes = require('./api/resumes/routes');
 const opportunityRoutes = require('./api/opportunities/routes');
 const aiRoutes = require('./api/ai/routes');
 const adminRoutes = require('./api/admin/routes');
+const jobRoutes = require('./api/jobs/routes');
+const recruiterRoutes = require('./api/recruiters/routes');
+const companyRoutes = require('./api/companies/routes');
 
 const app = express();
 
@@ -71,6 +74,9 @@ app.use('/api/matching', matchingRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/recruiters', recruiterRoutes);
+app.use('/api/companies', companyRoutes);
 
 // 4. Legacy Route Aliases for Compatibility
 // Legacy candidate applications alias
