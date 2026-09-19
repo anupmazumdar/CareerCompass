@@ -116,6 +116,21 @@ Frontend Build: npm run build --prefix frontend
   ✓ Compiled successfully with 0 errors.
 ```
 
+### Stage 7: AI Advisor Response Normal-Text Overhaul & Frontend Formatter
+- **Backend Prompt Re-engineering**: Updated `buildGroundedSystemPrompt` in `backend/app/services/careerAssistant.js` to strictly forbid raw markdown markup (e.g. `###`, `**`) and prohibited regurgitating repetitive profile breakdowns unless requested. Directs model to output clear, natural, human-like paragraphs with clean numbered points.
+- **Backend Fallbacks**: Updated `generateLocalGroundedAdvice` and initial welcome message in `careerAssistant.js` to eliminate `###` and `**` markdown syntax.
+- **Frontend NormalTextRenderer**: Added resilient `NormalTextRenderer` in `frontend/src/student/CareerPathAssistant.js` that parses headings, bold tokens, code spans, numbered items, and bullet points into styled React components without raw `###` or `**` syntax, and without using `dangerouslySetInnerHTML`.
+- **Testing**: Added backend test 5 in `ai-security.test.js` checking that advisor responses never contain raw `###` tokens; added frontend unit tests in `apiContract.test.js` verifying clean normal-text formatting.
+
+---
+
+## 2. Test Battery Evidence & Verification Results
+
+All backend test suites (78/78 tests) and frontend test suites (15/15 tests) pass with 100% success rate:
+- **Backend Security & Unit Suites**: 78 tests passed, 0 failed.
+- **Frontend Contract & Component Suites**: 15 tests passed, 0 failed.
+- **Production Build**: Compiled successfully (`build/static/js/main.37a5f6b8.js`, 100.11 kB gzip).
+
 ---
 
 ## 3. Git Commits Log
@@ -123,5 +138,7 @@ Frontend Build: npm run build --prefix frontend
 2. `6c9c1e0`: `feat(stage2): complete Opportunity Discovery and Weighted Skill Matching Engine with tests and seeds`
 3. `ed27929`: `feat(stage3): complete Application Tracking, Pipeline Timeline, Notes, and Kanban Board`
 4. `7830472`: `feat(stage4-6): complete Skills Management & Gap Analysis, Grounded AI Career Assistant, Placement Dashboard, and Academic Architecture Docs`
+5. `6bde94f`: `fix(auth,ai,skills): resolve invalid token loop, add refresh interceptor, student profile self-healing, and ai rate limiting`
+6. `efdc655`: `fix(ai): format assistant output as clean normal text without raw markdown symbols or profile dumps`
 
-All changes are pushed to `origin/main`.
+All changes are pushed and synchronized across `main` and `feat/phase1-data-models-auth`.
