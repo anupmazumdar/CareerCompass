@@ -116,7 +116,10 @@ export function CareerPathSkills() {
       }
     } catch (err) {
       console.error('Failed to compute gap analysis:', err);
-      showNotification('Failed to compute role gap analysis', 'error');
+      const status = err.status || err.data?.status;
+      if (status !== 401) {
+        showNotification(err.message || 'Failed to compute role gap analysis', 'error');
+      }
     } finally {
       setAnalyzing(false);
     }

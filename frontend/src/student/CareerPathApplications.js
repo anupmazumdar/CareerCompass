@@ -100,8 +100,10 @@ export function CareerPathApplications() {
       }
     } catch (err) {
       console.error('Failed to load applications:', err);
-      setError(err.message || 'Failed to load application tracker');
-      showNotification('Failed to load application tracker', 'error');
+      const status = err.status || err.data?.status;
+      const msg = status === 401 ? 'Session expired. Please sign in.' : (err.message || 'Failed to load application tracker');
+      setError(msg);
+      showNotification(msg, 'error');
     } finally {
       setLoading(false);
     }

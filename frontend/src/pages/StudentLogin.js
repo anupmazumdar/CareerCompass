@@ -33,24 +33,26 @@ export function StudentLogin() {
     }
   };
 
-  const handleDemoLogin = () => {
-    const demoPayload = {
-      token: 'demo-student-token-jwt-2026',
-      user: {
-        id: 1,
-        email: 'student@careercompass.edu',
-        role: 'student',
-        full_name: 'Rahul Sharma',
-        headline: 'MCA Final Year · Aspiring Full-Stack Engineer',
-        institution: 'University School of Information Technology',
-        cgpa: '8.8',
-        skills: ['React', 'Node.js', 'PostgreSQL', 'Docker', 'AWS', 'Python', 'TailwindCSS'],
-        targetRole: 'Full-Stack Developer',
-        profileCompleteness: 85
+  const handleDemoLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await api.post('/api/auth/login', {
+        email: 'student@careercompass.io',
+        password: 'CompassPassword@123'
+      });
+      if (res && res.success && res.data) {
+        login(res.data);
+        navigate('/dashboard');
+      } else {
+        throw new Error(res?.message || res?.error || 'Authentication failed');
       }
-    };
-    login(demoPayload);
-    navigate('/dashboard');
+    } catch (err) {
+      console.error('Demo login error:', err);
+      setError(err.message || 'Demo login failed. Please verify backend connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

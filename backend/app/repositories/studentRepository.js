@@ -4,13 +4,33 @@ const db = require('../core/database/connection');
 
 class StudentRepository {
   async findByUserId(userId) {
-    return db.get(
+    let profile = await db.get(
       `SELECT sp.*, u.email, u.full_name, u.phone
        FROM student_profiles sp
        JOIN users u ON sp.user_id = u.id
        WHERE sp.user_id = ?`,
       [userId]
     );
+
+    if (!profile) {
+      const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+      if (user && (user.role === 'student' || user.role === 'candidate')) {
+        await this.createProfile(user.id, {
+          headline: 'MCA Student · Software Engineer Aspirant',
+          preferredRole: 'Full-Stack Developer',
+          is_public: 1
+        });
+        profile = await db.get(
+          `SELECT sp.*, u.email, u.full_name, u.phone
+           FROM student_profiles sp
+           JOIN users u ON sp.user_id = u.id
+           WHERE sp.user_id = ?`,
+          [userId]
+        );
+      }
+    }
+
+    return profile || null;
   }
 
   async findById(profileId) {

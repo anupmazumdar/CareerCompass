@@ -7,6 +7,19 @@ const { authenticateToken } = require('../../core/authentication/auth');
 const { requireRole } = require('../../core/authorization/rbac');
 const { z } = require('zod');
 const { validate } = require('../../middleware/validate');
+const rateLimit = require('express-rate-limit');
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many AI requests. Please wait a minute before trying again.'
+  }
+});
 
 const chatRequestSchema = z.object({
   messages: z.array(
@@ -18,7 +31,7 @@ const chatRequestSchema = z.object({
 });
 
 // POST /api/ai/chat (Grounded student career assistant)
-router.post('/chat', authenticateToken, requireRole('student'), validate(chatRequestSchema), async (req, res, next) => {
+router.post('/chat', authenticateToken, requireRole('student'), aiLimiter, validate(chatRequestSchema), async (req, res, next) => {
   try {
     const { messages } = req.body;
     const result = await careerAssistant.chat({

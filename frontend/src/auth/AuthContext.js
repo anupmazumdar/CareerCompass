@@ -41,6 +41,14 @@ export function setStoredAuth(userData) {
   return authPayload;
 }
 
+export function setStoredToken(newToken) {
+  const auth = getStoredAuth();
+  if (auth && newToken) {
+    auth.token = newToken;
+    setStoredAuth({ user: auth.user, accessToken: newToken });
+  }
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -52,15 +60,82 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = getStoredAuth();
-    if (stored) {
-      setAuthState({
-        isAuthenticated: true,
-        user: stored.user,
-        token: stored.token
-      });
+    let isMounted = true;
+
+    async function initAuth() {
+      const stored = getStoredAuth();
+      if (!stored?.token) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      // Purge legacy mock/bogus tokens
+      if (stored.token.startsWith('demo-') || !stored.token.includes('.')) {
+        clearStoredAuth();
+        if (isMounted) {
+          setAuthState({ isAuthenticated: false, user: null, token: null });
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Fast optimistic restore from valid stored JWT
+      if (isMounted) {
+        setAuthState({
+          isAuthenticated: true,
+          user: stored.user,
+          token: stored.token
+        });
+      }
+
+      try {
+        const { api } = await import('../api/client');
+        const res = await api.get('/api/auth/me');
+        if (res && res.success && res.data) {
+          if (isMounted) {
+            setAuthState({
+              isAuthenticated: true,
+              user: res.data,
+              token: stored.token
+            });
+            // Update stored user profile with fresh server-grounded data
+            setStoredAuth({ user: res.data, accessToken: stored.token });
+          }
+        }
+      } catch (err) {
+        // If 401/403 and refresh couldn't save session, clear stale state
+        const status = err.status || err.data?.status;
+        if (status === 401 || status === 403) {
+          console.warn('Session expired on startup. Clearing stale credentials.');
+          clearStoredAuth();
+          if (isMounted) {
+            setAuthState({ isAuthenticated: false, user: null, token: null });
+          }
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
-    setLoading(false);
+
+    initAuth();
+
+    const handleLogoutEvent = () => {
+      if (isMounted) setAuthState({ isAuthenticated: false, user: null, token: null });
+    };
+    const handleTokenRefreshed = (e) => {
+      if (isMounted && e.detail?.token) {
+        setAuthState(prev => ({ ...prev, token: e.detail.token }));
+      }
+    };
+
+    window.addEventListener('careercompass:auth:logout', handleLogoutEvent);
+    window.addEventListener('careercompass:auth:token-refreshed', handleTokenRefreshed);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('careercompass:auth:logout', handleLogoutEvent);
+      window.removeEventListener('careercompass:auth:token-refreshed', handleTokenRefreshed);
+    };
   }, []);
 
   const login = (userData) => {

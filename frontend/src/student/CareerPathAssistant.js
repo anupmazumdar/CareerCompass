@@ -90,20 +90,20 @@ How can I help you accelerate your placement journey today?`,
 
         if (meRes && meRes.success && meRes.data) {
           setGroundedContext({
-            name: meRes.data.full_name,
+            name: meRes.data.full_name || 'Student',
             skillsCount: (meRes.data.skills || []).length,
             applicationsCount: (appRes?.data || []).length,
-            completeness: meRes.data.completeness_score || 0
+            completeness: meRes.data.completeness_score || meRes.data.profile_completeness || 0
           });
-        }
-
-        if (!meRes.success && !appRes.success) {
+        } else if (!meRes?.success) {
           throw new Error('Could not load student profile grounding');
         }
       } catch (err) {
         console.error('Failed to load grounded context:', err);
-        setError('Could not load student profile grounding');
-        showNotification('Unable to load full profile context for assistant', 'error');
+        const status = err.status || err.data?.status;
+        const msg = status === 401 ? 'Session expired. Please sign in.' : 'Could not load student profile grounding';
+        setError(msg);
+        showNotification(msg, 'error');
       }
     }
     loadGroundedSummary();
@@ -146,14 +146,23 @@ How can I help you accelerate your placement journey today?`,
       }
     } catch (err) {
       console.error('Chat error:', err);
-      setError(err.message || 'Assistant encountered a network error');
-      showNotification('Assistant encountered a temporary network delay', 'error');
+      const status = err.status || err.data?.status;
+      let userMsg = err.message || 'Assistant encountered an error';
+      if (status === 401) {
+        userMsg = 'Session expired. Please sign in again.';
+      } else if (status === 429) {
+        userMsg = 'AI rate limit reached. Please wait a minute.';
+      } else if (status >= 500) {
+        userMsg = 'AI advisor service is temporarily unavailable. Please try again shortly.';
+      }
+      setError(userMsg);
+      showNotification(userMsg, 'error');
       setMessages(prev => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: `⚠️ I was unable to connect to the advisor backend. Please verify your connection or try asking again.`,
+          content: `⚠️ ${userMsg}`,
           isError: true
         }
       ]);

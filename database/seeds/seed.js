@@ -329,6 +329,139 @@ function seedDatabase(targetDbPath = DEFAULT_DB_PATH) {
           }
         }
 
+        // Demo Student 2: Rahul Sharma (Matches MCA Placement Aspirant Profile from UI Screenshots)
+        await run(
+          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'student', ?, ?, 'active')`,
+          ['student@careercompass.edu', defaultPasswordHash, 'Rahul Sharma', '+91 9876543213']
+        );
+        const rahulUser = await get('SELECT id FROM users WHERE email = ?', ['student@careercompass.edu']);
+        if (rahulUser) {
+          await run(
+            `INSERT OR IGNORE INTO student_profiles (
+              user_id, headline, bio, location, college, degree, branch, current_semester,
+              graduation_year, cgpa, preferred_role, preferred_roles, preferred_locations,
+              work_mode_preference, github_url, linkedin_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              rahulUser.id,
+              'MCA Final Year · Aspiring Full-Stack Engineer',
+              'Passionate computer applications student actively building full-stack web applications and preparing for campus placement recruitment.',
+              'New Delhi, India',
+              'University School of Information Technology',
+              'Master of Computer Applications (MCA)',
+              'Computer Applications',
+              5,
+              2026,
+              8.80,
+              'Full-Stack Developer',
+              JSON.stringify(['Full-Stack Developer', 'Backend Engineer']),
+              JSON.stringify(['Delhi NCR', 'Bangalore', 'Remote']),
+              'hybrid',
+              'https://github.com/rahulsharma-dev',
+              'https://linkedin.com/in/rahulsharma-career'
+            ]
+          );
+          const rahulProfile = await get('SELECT id FROM student_profiles WHERE user_id = ?', [rahulUser.id]);
+          if (rahulProfile) {
+            await run(
+              `INSERT OR IGNORE INTO student_education (student_id, institution, degree, field_of_study, start_year, end_year, grade_or_cgpa)
+               VALUES (?, ?, ?, ?, 2024, 2026, '8.80 CGPA')`,
+              [rahulProfile.id, 'University School of Information Technology', 'MCA', 'Computer Applications']
+            );
+            const rahulSkills = ['React', 'Node.js', 'JavaScript', 'TypeScript', 'SQL', 'PostgreSQL', 'Docker', 'Python', 'Tailwind CSS'];
+            for (const skName of rahulSkills) {
+              if (skillMap[skName]) {
+                await run(
+                  `INSERT OR IGNORE INTO student_skills (student_id, skill_id, proficiency_level, source, confidence_score)
+                   VALUES (?, ?, 'expert', 'quiz_verified', 0.90)`,
+                  [rahulProfile.id, skillMap[skName]]
+                );
+              }
+            }
+            await run(
+              `INSERT OR IGNORE INTO student_projects (student_id, title, description, technologies, github_url, project_url)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [
+                rahulProfile.id,
+                'Full-Stack Placement Intelligence Portal',
+                'Comprehensive placement preparation system benchmarked for campus opportunities.',
+                JSON.stringify(['React', 'Node.js', 'PostgreSQL', 'Docker']),
+                'https://github.com/rahulsharma-dev/portal',
+                'https://rahul-portal.careercompass.io'
+              ]
+            );
+          }
+        }
+
+        // Demo Student 3: Anup Mazumdar (Matches Student Profile from UI Screenshots)
+        await run(
+          `INSERT OR IGNORE INTO users (email, password_hash, role, full_name, phone, status) VALUES (?, ?, 'student', ?, ?, 'active')`,
+          ['anup@careercompass.io', defaultPasswordHash, 'Anup Mazumdar', '+91 9876543214']
+        );
+        const anupUser = await get('SELECT id FROM users WHERE email = ?', ['anup@careercompass.io']);
+        if (anupUser) {
+          await run(
+            `INSERT OR IGNORE INTO student_profiles (
+              user_id, headline, bio, location, college, degree, branch, current_semester,
+              graduation_year, cgpa, preferred_role, preferred_roles, preferred_locations,
+              work_mode_preference, github_url, linkedin_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              anupUser.id,
+              'MCA Student & Full Stack Software Engineer | Campus Placement Aspirant',
+              'MCA Cohort candidate developing scalable cloud services, AI co-pilots, and responsive interfaces for modern tech ecosystems.',
+              'Bangalore, India',
+              'National Institute of Technology',
+              'Master of Computer Applications (MCA)',
+              'Computer Science',
+              5,
+              2026,
+              8.90,
+              'Full-Stack Developer',
+              JSON.stringify(['Full-Stack Developer', 'Backend Engineer', 'DevOps & Cloud Engineer']),
+              JSON.stringify(['Bangalore', 'Hyderabad', 'Remote']),
+              'hybrid',
+              'https://github.com/anupmazumdar',
+              'https://linkedin.com/in/anupmazumdar'
+            ]
+          );
+          const anupProfile = await get('SELECT id FROM student_profiles WHERE user_id = ?', [anupUser.id]);
+          if (anupProfile) {
+            await run(
+              `INSERT OR IGNORE INTO student_education (student_id, institution, degree, field_of_study, start_year, end_year, grade_or_cgpa)
+               VALUES (?, ?, ?, ?, 2024, 2026, '8.90 CGPA')`,
+              [anupProfile.id, 'National Institute of Technology', 'MCA', 'Computer Science']
+            );
+            const anupSkills = ['React', 'Node.js', 'JavaScript', 'TypeScript', 'SQL', 'PostgreSQL', 'Docker', 'Python', 'Git', 'AWS'];
+            for (const skName of anupSkills) {
+              if (skillMap[skName]) {
+                await run(
+                  `INSERT OR IGNORE INTO student_skills (student_id, skill_id, proficiency_level, source, confidence_score)
+                   VALUES (?, ?, 'expert', 'quiz_verified', 0.95)`,
+                  [anupProfile.id, skillMap[skName]]
+                );
+              }
+            }
+            await run(
+              `INSERT OR IGNORE INTO student_projects (student_id, title, description, technologies, github_url, project_url)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [
+                anupProfile.id,
+                'CareerCompass AI Career & Placement Engine',
+                'Engineered end-to-end recruitment platform with grounded AI career advisor, role gap diagnostics, and ATS resume verification.',
+                JSON.stringify(['React', 'Node.js', 'PostgreSQL', 'Docker', 'Tailwind CSS']),
+                'https://github.com/anupmazumdar/CareerCompass',
+                'https://career-compass-rose-five.vercel.app'
+              ]
+            );
+            await run(
+              `INSERT OR IGNORE INTO resumes (student_id, file_name, file_path, mime_type, file_size, version_label, is_primary)
+               VALUES (?, ?, ?, ?, ?, ?, 1)`,
+              [anupProfile.id, 'Anup_Mazumdar_Software_Engineer_Resume.pdf', '/uploads/resumes/anup_mazumdar_resume.pdf', 'application/pdf', 155200, 'Full Stack Core']
+            );
+          }
+        }
+
         // 5. Seed 42+ Realistic Opportunities Across Diverse Types, Locations, Work Modes, and Deadlines
         const addDays = (d) => {
           const date = new Date(Date.now() + d * 86400000);
