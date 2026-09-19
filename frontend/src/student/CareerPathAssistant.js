@@ -38,13 +38,141 @@ const QUICK_PROMPT_CHIPS = [
   }
 ];
 
+/**
+ * Renders text as clean, natural text without raw markdown symbols (###, **, etc.)
+ */
+function renderInlineText(text, isUser) {
+  if (!text) return null;
+
+  const parts = [];
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('`') && token.endsWith('`')) {
+      const codeContent = token.slice(1, -1);
+      parts.push(
+        <code
+          key={match.index}
+          className={`px-1 py-0.5 rounded font-mono text-[11px] ${
+            isUser ? 'bg-indigo-700 text-white' : 'bg-slate-200/70 text-indigo-700'
+          }`}
+        >
+          {codeContent}
+        </code>
+      );
+    } else {
+      const boldContent = token.slice(2, -2);
+      parts.push(
+        <strong key={match.index} className="font-semibold text-inherit">
+          {boldContent}
+        </strong>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
+export function NormalTextRenderer({ content, isUser = false }) {
+  if (!content) return null;
+
+  const lines = String(content).split('\n');
+  const elements = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      elements.push(<div key={`sp-${i}`} className="h-2" />);
+      continue;
+    }
+
+    // Markdown header (e.g. ### Heading or ## Heading)
+    const headerMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (headerMatch) {
+      const headerText = headerMatch[2];
+      elements.push(
+        <div
+          key={`h-${i}`}
+          className={`font-bold text-[13px] mt-2 mb-1 ${
+            isUser ? 'text-white' : 'text-slate-900'
+          }`}
+        >
+          {renderInlineText(headerText, isUser)}
+        </div>
+      );
+      continue;
+    }
+
+    // Bullet point: - or * or •
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
+    if (bulletMatch) {
+      const itemText = bulletMatch[1];
+      elements.push(
+        <div key={`b-${i}`} className="flex items-start gap-2 ml-1 my-0.5">
+          <span className={`shrink-0 ${isUser ? 'text-white/80' : 'text-indigo-600 font-bold'}`}>
+            •
+          </span>
+          <span className="flex-1 leading-relaxed">
+            {renderInlineText(itemText, isUser)}
+          </span>
+        </div>
+      );
+      continue;
+    }
+
+    // Numbered list item: 1. or 2.
+    const numberMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+    if (numberMatch) {
+      const num = numberMatch[1];
+      const itemText = numberMatch[2];
+      elements.push(
+        <div key={`n-${i}`} className="flex items-start gap-2 ml-1 my-0.5">
+          <span
+            className={`font-semibold shrink-0 ${
+              isUser ? 'text-white/90' : 'text-indigo-600'
+            }`}
+          >
+            {num}.
+          </span>
+          <span className="flex-1 leading-relaxed">
+            {renderInlineText(itemText, isUser)}
+          </span>
+        </div>
+      );
+      continue;
+    }
+
+    // Standard paragraph line
+    elements.push(
+      <p key={`p-${i}`} className="leading-relaxed">
+        {renderInlineText(rawLine, isUser)}
+      </p>
+    );
+  }
+
+  return <div className="space-y-0.5 font-sans">{elements}</div>;
+}
+
 export function CareerPathAssistant() {
   // Session Boundary: In-memory state only (F5 refresh starts clean slate)
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `### Welcome to CareerPath AI! 👋
+      content: `Welcome to CareerPath AI! 👋
 
 I am your personal, grounded technical career co-pilot. I have loaded your verified academic background, skills, projects, and active applications.
 
@@ -311,10 +439,8 @@ How can I help you accelerate your placement journey today?`,
                     : 'bg-slate-50 border border-slate-200/80 text-slate-800 rounded-tl-xs'
                 }`}
               >
-                {/* Content formatted */}
-                <div className="whitespace-pre-wrap font-sans">
-                  {msg.content}
-                </div>
+                {/* Content formatted as clean normal text */}
+                <NormalTextRenderer content={msg.content} isUser={msg.role === 'user'} />
 
                 {/* Model / Source Footer on Assistant Messages */}
                 {msg.role === 'assistant' && msg.modelUsed && (

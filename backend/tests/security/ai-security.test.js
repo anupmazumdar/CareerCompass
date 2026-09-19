@@ -87,4 +87,21 @@ test('AI Security - Prompt Injection Guard, Authentication, and Abuse Controls',
     assert.equal(reply.includes('jwt_secret'), false, 'Response must never leak JWT secrets');
     assert.equal(reply.includes('sk-or-v1-'), false, 'Response must never leak OpenRouter keys');
   });
+
+  await t.test('5. AI advisor guidance outputs clean normal text without raw markdown header hashtags (###)', async () => {
+    const res = await fetch(`${baseUrl}/api/ai/chat`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${studentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'How can I fix my resume?' }] })
+    });
+
+    assert.equal(res.status, 200, 'AI chat must return 200 for student');
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.ok(data.data?.reply, 'Reply must be present');
+    assert.equal(data.data.reply.includes('###'), false, 'Advisor output should not contain raw ### markdown header tokens');
+  });
 });

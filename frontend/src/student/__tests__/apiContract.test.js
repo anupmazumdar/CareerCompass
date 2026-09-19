@@ -6,7 +6,7 @@ import { CareerPathOpportunities } from '../CareerPathOpportunities';
 import { CareerPathApplications } from '../CareerPathApplications';
 import { CareerPathSkills } from '../CareerPathSkills';
 import { CareerPathProfile } from '../CareerPathProfile';
-import { CareerPathAssistant } from '../CareerPathAssistant';
+import { CareerPathAssistant, NormalTextRenderer } from '../CareerPathAssistant';
 
 // Mock scrollIntoView in jsdom
 if (typeof window !== 'undefined' && window.HTMLElement) {
@@ -450,6 +450,28 @@ describe('CareerPath API Response Contract Tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('assistant-error-alert')).toBeInTheDocument();
       });
+    });
+
+    test('NormalTextRenderer formats raw markdown into clean normal text without raw ### or **', () => {
+      const sampleRawMarkdown = `### Immediate Next Steps
+1. **Polish Your Resume**
+- Highlight the placement platform
+**Hi Alex!** 👋 Normal conversational text.`;
+
+      const { container } = render(<NormalTextRenderer content={sampleRawMarkdown} />);
+
+      // Verify raw markdown tokens are NOT present in output text
+      expect(container.textContent).not.toContain('###');
+      expect(container.textContent).not.toContain('**');
+      expect(container.textContent).toContain('Immediate Next Steps');
+      expect(container.textContent).toContain('Polish Your Resume');
+      expect(container.textContent).toContain('Hi Alex! 👋 Normal conversational text.');
+      
+      // Verify bold tags are created
+      const strongs = container.querySelectorAll('strong');
+      expect(strongs.length).toBeGreaterThanOrEqual(2);
+      expect(strongs[0].textContent).toBe('Polish Your Resume');
+      expect(strongs[1].textContent).toBe('Hi Alex!');
     });
   });
 });
