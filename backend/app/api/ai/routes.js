@@ -25,9 +25,9 @@ const chatRequestSchema = z.object({
   messages: z.array(
     z.object({
       role: z.enum(['user', 'assistant', 'system']),
-      content: z.string().min(1).max(4000)
+      content: z.string().min(1, 'Message content cannot be empty').max(4000, 'Message content cannot exceed 4000 characters')
     })
-  ).min(1, 'At least one message is required')
+  ).min(1, 'At least one message is required').max(20, 'Cannot exceed 20 messages in conversation history')
 });
 
 // POST /api/ai/chat (Grounded student career assistant)

@@ -1,52 +1,48 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AUTH_STORAGE_KEY } from '../config';
 
+let inMemoryAccessToken = null;
+let inMemoryUser = null;
+
 export function getStoredAuth() {
-  try {
-    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!saved) return null;
-    const parsed = JSON.parse(saved);
-    const token = parsed?.token || parsed?.accessToken;
-    const user = parsed?.user || parsed;
-    if (token) return { token, user };
-  } catch (_) {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  if (inMemoryAccessToken) {
+    return { token: inMemoryAccessToken, user: inMemoryUser };
   }
   return null;
 }
 
 export function getStoredToken() {
-  const auth = getStoredAuth();
-  return auth ? auth.token : null;
+  return inMemoryAccessToken;
 }
 
 export function getStoredUser() {
-  const auth = getStoredAuth();
-  return auth ? auth.user : null;
+  return inMemoryUser;
 }
 
 export function clearStoredAuth() {
+  inMemoryAccessToken = null;
+  inMemoryUser = null;
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
   } catch (_) {}
 }
 
 export function setStoredAuth(userData) {
-  const token = userData?.accessToken || userData?.token;
+  const token = userData?.accessToken || userData?.token || inMemoryAccessToken;
   const user = userData?.user || userData;
-  const authPayload = { isAuthenticated: Boolean(token), user, token };
+  inMemoryAccessToken = token || null;
+  inMemoryUser = user || null;
+  // SECURITY: Never persist access token in browser localStorage or sessionStorage
   try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authPayload));
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
   } catch (_) {}
-  return authPayload;
+  return { isAuthenticated: Boolean(inMemoryAccessToken), user: inMemoryUser, token: inMemoryAccessToken };
 }
 
 export function setStoredToken(newToken) {
-  const auth = getStoredAuth();
-  if (auth && newToken) {
-    auth.token = newToken;
-    setStoredAuth({ user: auth.user, accessToken: newToken });
-  }
+  inMemoryAccessToken = newToken || null;
 }
 
 const AuthContext = createContext(null);
@@ -63,54 +59,49 @@ export function AuthProvider({ children }) {
     let isMounted = true;
 
     async function initAuth() {
-      const stored = getStoredAuth();
-      if (!stored?.token) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-
-      // Purge legacy mock/bogus tokens
-      if (stored.token.startsWith('demo-') || !stored.token.includes('.')) {
-        clearStoredAuth();
-        if (isMounted) {
-          setAuthState({ isAuthenticated: false, user: null, token: null });
-          setLoading(false);
-        }
-        return;
-      }
-
-      // Fast optimistic restore from valid stored JWT
-      if (isMounted) {
-        setAuthState({
-          isAuthenticated: true,
-          user: stored.user,
-          token: stored.token
-        });
-      }
-
       try {
+        // Purge any legacy localStorage auth tokens
+        try {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        } catch (_) {}
+
+        // 1. Transparently restore session from HttpOnly refresh cookie
         const { api } = await import('../api/client');
-        const res = await api.get('/api/auth/me');
-        if (res && res.success && res.data) {
-          if (isMounted) {
-            setAuthState({
-              isAuthenticated: true,
-              user: res.data,
-              token: stored.token
-            });
-            // Update stored user profile with fresh server-grounded data
-            setStoredAuth({ user: res.data, accessToken: stored.token });
+        const refreshRes = await api.post('/api/auth/refresh', {}, { _isInitialRefresh: true }).catch(() => null);
+
+        const token = refreshRes?.accessToken || refreshRes?.data?.accessToken;
+        if (token) {
+          setStoredToken(token);
+
+          // 2. Fetch fresh authenticated user profile from /api/auth/me
+          const meRes = await api.get('/api/auth/me').catch(() => null);
+          if (meRes && meRes.success && meRes.data) {
+            const user = meRes.data;
+            setStoredAuth({ user, accessToken: token });
+            if (isMounted) {
+              setAuthState({
+                isAuthenticated: true,
+                user,
+                token
+              });
+            }
+          } else {
+            clearStoredAuth();
+            if (isMounted) {
+              setAuthState({ isAuthenticated: false, user: null, token: null });
+            }
           }
-        }
-      } catch (err) {
-        // If 401/403 and refresh couldn't save session, clear stale state
-        const status = err.status || err.data?.status;
-        if (status === 401 || status === 403) {
-          console.warn('Session expired on startup. Clearing stale credentials.');
+        } else {
           clearStoredAuth();
           if (isMounted) {
             setAuthState({ isAuthenticated: false, user: null, token: null });
           }
+        }
+      } catch (err) {
+        clearStoredAuth();
+        if (isMounted) {
+          setAuthState({ isAuthenticated: false, user: null, token: null });
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -120,10 +111,13 @@ export function AuthProvider({ children }) {
     initAuth();
 
     const handleLogoutEvent = () => {
+      clearStoredAuth();
       if (isMounted) setAuthState({ isAuthenticated: false, user: null, token: null });
     };
+
     const handleTokenRefreshed = (e) => {
       if (isMounted && e.detail?.token) {
+        setStoredToken(e.detail.token);
         setAuthState(prev => ({ ...prev, token: e.detail.token }));
       }
     };
@@ -143,9 +137,16 @@ export function AuthProvider({ children }) {
     setAuthState(authPayload);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      const { api } = await import('../api/client');
+      await api.post('/api/auth/logout').catch(() => {});
+    } catch (_) {}
     clearStoredAuth();
     setAuthState({ isAuthenticated: false, user: null, token: null });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('careercompass:auth:logout'));
+    }
   };
 
   return (

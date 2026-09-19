@@ -87,7 +87,7 @@ const CHEAP_MODEL_MAP = {
  */
 function getApiKey() {
   try {
-    return process.env.OPENROUTER_API_KEY || process.env.REACT_APP_OPENROUTER_API_KEY || '';
+    return process.env.OPENROUTER_API_KEY || '';
   } catch (error) {
     console.error('[TalentAI][MODEL][INTERNAL] Failed to resolve API key:', error.message);
     return '';
@@ -347,7 +347,7 @@ async function callOpenRouter(request) {
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
-      throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY or REACT_APP_OPENROUTER_API_KEY.');
+      throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY.');
     }
 
     const controller = new AbortController();

@@ -52,17 +52,16 @@ async function ensureDbReady() {
 module.exports = async (req, res) => {
   // If top-level module load failed, return structured JSON error rather than raw lambda crash
   if (bootError) {
+    console.error('❌ Serverless Boot Error:', bootError);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    const isProd = process.env.NODE_ENV === 'production';
     return res.end(
       JSON.stringify({
         success: false,
         error: 'SERVERLESS_COLD_START_MODULE_LOAD_FAILURE',
-        message: bootError.message,
-        stack: bootError.stack,
-        code: bootError.code
+        message: isProd ? 'An internal server error occurred during serverless initialization' : bootError.message,
+        ...(isProd ? {} : { stack: bootError.stack, code: bootError.code })
       })
     );
   }
@@ -90,15 +89,15 @@ module.exports = async (req, res) => {
 
     app(req, res, (err) => {
       if (err && !res.headersSent) {
+        console.error('❌ Express Unhandled Error:', err);
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        const isProd = process.env.NODE_ENV === 'production';
         res.end(
           JSON.stringify({
             success: false,
             error: 'EXPRESS_UNHANDLED_ERROR',
-            message: err.message || 'Unhandled server error'
+            message: isProd ? 'An internal server error occurred' : (err.message || 'Unhandled server error')
           })
         );
       }

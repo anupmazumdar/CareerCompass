@@ -104,4 +104,34 @@ test('AI Security - Prompt Injection Guard, Authentication, and Abuse Controls',
     assert.ok(data.data?.reply, 'Reply must be present');
     assert.equal(data.data.reply.includes('###'), false, 'Advisor output should not contain raw ### markdown header tokens');
   });
+
+  await t.test('6. Oversized AI chat message (>4000 characters) is rejected with 400', async () => {
+    const hugeMessage = 'A'.repeat(4500);
+    const res = await fetch(`${baseUrl}/api/ai/chat`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${studentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messages: [{ role: 'user', content: hugeMessage }] })
+    });
+
+    assert.equal(res.status, 400, 'Oversized message must be rejected with 400');
+  });
+
+  await t.test('7. Resume analysis text exceeding 50,000 characters is rejected with 400', async () => {
+    const hugeResumeText = 'X'.repeat(55000);
+    const res = await fetch(`${baseUrl}/api/resumes/analyze`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${studentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: hugeResumeText })
+    });
+
+    assert.equal(res.status, 400, 'Oversized resume text must return 400 PAYLOAD_TOO_LARGE');
+    const data = await res.json();
+    assert.equal(data.error, 'PAYLOAD_TOO_LARGE');
+  });
 });

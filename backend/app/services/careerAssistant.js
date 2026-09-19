@@ -16,7 +16,7 @@ const FREE_MODELS_FALLBACK_CHAIN = [
 ];
 
 function getOpenRouterApiKey() {
-  return process.env.OPENROUTER_API_KEY || process.env.REACT_APP_OPENROUTER_API_KEY || '';
+  return process.env.OPENROUTER_API_KEY || '';
 }
 
 /**

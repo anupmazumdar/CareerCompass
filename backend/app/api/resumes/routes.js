@@ -22,8 +22,22 @@ const crypto = require('crypto');
 const db = require('../../core/database/connection');
 const { authenticateToken } = require('../../core/authentication/auth');
 const { requireRole } = require('../../core/authorization/rbac');
+const { resumeUploadLimiter } = require('../../core/security/security');
 const resumeService = require('../../services/resume/resumeService');
 const studentRepo = require('../../repositories/studentRepository');
+
+// Helper to prevent hung document parser execution / decompression bombs
+async function parseWithTimeout(promise, timeoutMs = 5000) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('PARSER_TIMEOUT')), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Configure Multer in-memory storage (5 MB cap)
 const upload = multer({
@@ -51,9 +65,15 @@ function validateFileMagicBytes(buffer, mimeType) {
 // POST /api/resumes/analyze - Analyze resume text for ATS score
 router.post('/analyze', authenticateToken, async (req, res, next) => {
   try {
-    const { text, targetRole } = req.body;
-    if (!text) {
-      return res.status(400).json({ success: false, error: 'Resume text is required' });
+    const { text, targetRole } = req.body || {};
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Resume text is required as a string' });
+    }
+    if (text.length > 50000) {
+      return res.status(400).json({ success: false, error: 'PAYLOAD_TOO_LARGE', message: 'Resume text exceeds maximum limit of 50,000 characters' });
+    }
+    if (targetRole && (typeof targetRole !== 'string' || targetRole.length > 100)) {
+      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Target role must be a string under 100 characters' });
     }
     const analysis = await resumeService.analyzeResume(text, targetRole);
     res.json({ success: true, analysis });
@@ -63,7 +83,7 @@ router.post('/analyze', authenticateToken, async (req, res, next) => {
 });
 
 // POST /api/resumes/upload - Secure PDF/DOCX Resume Upload with Magic-Byte Check & Skill Extraction
-router.post('/upload', authenticateToken, requireRole('student'), upload.single('resume'), async (req, res, next) => {
+router.post('/upload', authenticateToken, requireRole('student'), resumeUploadLimiter, upload.single('resume'), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -95,17 +115,17 @@ router.post('/upload', authenticateToken, requireRole('student'), upload.single(
       });
     }
 
-    // 2. Extract Raw Text from Buffer
+    // 2. Extract Raw Text from Buffer with Timeout Guard
     let extractedText = '';
     if (mimetype.includes('pdf') || originalname.toLowerCase().endsWith('.pdf')) {
       try {
         const pdfModule = require('pdf-parse');
         if (typeof pdfModule === 'function') {
-          const parsed = await pdfModule(buffer);
-          extractedText = parsed.text || '';
+          const parsed = await parseWithTimeout(pdfModule(buffer), 5000);
+          extractedText = parsed?.text || '';
         } else if (pdfModule && typeof pdfModule.PDFParse === 'function') {
           const parser = new pdfModule.PDFParse({ data: buffer });
-          const textRes = await parser.getText();
+          const textRes = await parseWithTimeout(parser.getText(), 5000);
           if (parser.destroy) await parser.destroy();
           extractedText = typeof textRes === 'string' ? textRes : (textRes?.text || '');
         }
@@ -115,8 +135,8 @@ router.post('/upload', authenticateToken, requireRole('student'), upload.single(
       if (!extractedText) extractedText = buffer.toString('utf-8');
     } else if (mimetype.includes('word') || originalname.toLowerCase().endsWith('.docx')) {
       try {
-        const parsedDocx = await mammoth.extractRawText({ buffer });
-        extractedText = parsedDocx.value || '';
+        const parsedDocx = await parseWithTimeout(mammoth.extractRawText({ buffer }), 5000);
+        extractedText = parsedDocx?.value || '';
       } catch (_) {
         extractedText = buffer.toString('utf-8');
       }

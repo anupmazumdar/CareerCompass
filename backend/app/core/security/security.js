@@ -131,6 +131,15 @@ const opportunityLimiter = rateLimit({
   message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Too many opportunity requests. Please slow down.' }
 });
 
+// Dedicated resume upload limiter: 10 uploads / 15 min
+const resumeUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevOrTest ? 200 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'TOO_MANY_REQUESTS', message: 'Resume upload rate limit reached. Please try again later.' }
+});
+
 // 4. Input Sanitization
 const sanitizeMiddleware = [
   mongoSanitize({ replaceWith: '_' }),
@@ -145,7 +154,15 @@ function validateCsrfOrigin(req, res, next) {
     return next();
   }
 
-  const origin = req.headers['origin'];
+  // Determine origin directly from Origin or fallback to Referer header
+  let origin = req.headers['origin'];
+  if (!origin && req.headers['referer']) {
+    try {
+      const parsedUrl = new URL(req.headers['referer']);
+      origin = parsedUrl.origin;
+    } catch (_) {}
+  }
+
   if (origin) {
     const isAllowedOrigin = config.cors.allowedOrigins.includes(origin);
     const isProjectVercel = PROJECT_VERCEL_PREVIEW_RE.test(origin);
@@ -157,6 +174,17 @@ function validateCsrfOrigin(req, res, next) {
         success: false,
         error: 'CSRF_REJECTED',
         message: 'Cross-origin request blocked by CSRF protection policy.'
+      });
+    }
+  } else {
+    // If request carries credentials (cookies) but neither Origin nor Referer is provided
+    const hasCookies = Boolean(req.cookies?.refreshToken);
+    const secFetchSite = req.headers['sec-fetch-site'];
+    if (hasCookies && secFetchSite === 'cross-site') {
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF_REJECTED',
+        message: 'Untrusted cross-site request blocked by CSRF policy.'
       });
     }
   }
@@ -172,6 +200,7 @@ module.exports = {
   aiRateLimiter,
   adminRateLimiter,
   opportunityLimiter,
+  resumeUploadLimiter,
   sanitizeMiddleware,
   validateCsrfOrigin
 };

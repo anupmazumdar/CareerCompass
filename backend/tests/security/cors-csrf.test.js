@@ -79,4 +79,28 @@ test('CORS and CSRF Security - Origin Boundaries and State-Mutation Controls', a
     // Not 403 CSRF error: allowed through
     assert.notEqual(res.status, 403, 'Legitimate project origin must pass CSRF validation');
   });
+
+  await t.test('7. CSRF defense blocks unauthorized state-changing mutation with attacker Referer header', async () => {
+    const res = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Referer: 'https://evil-attacker.example.com/phish',
+        'Content-Type': 'application/json'
+      }
+    });
+    assert.equal(res.status, 403, 'Attacker Referer header must be blocked with 403');
+    const data = await res.json();
+    assert.equal(data.error, 'CSRF_REJECTED');
+  });
+
+  await t.test('8. CSRF defense allows legitimate project Referer header', async () => {
+    const res = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Referer: 'https://career-compass-rose-five.vercel.app/profile',
+        'Content-Type': 'application/json'
+      }
+    });
+    assert.notEqual(res.status, 403, 'Legitimate project Referer must pass CSRF check');
+  });
 });

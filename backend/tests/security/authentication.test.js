@@ -123,4 +123,38 @@ test('Authentication Security - Lifecycle, Credential Verification, Rotation, an
     const data = await res.json();
     assert.equal(data.success, true);
   });
+
+  await t.test('6. Registration with password shorter than 12 characters is rejected', async () => {
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: `short-pass-${Date.now()}@test.edu`,
+        password: 'Short9!',
+        role: 'student',
+        fullName: 'Short Pass'
+      })
+    });
+
+    assert.equal(res.status, 400, 'Password under 12 characters must be rejected with 400');
+    const data = await res.json();
+    assert.equal(data.error, 'VALIDATION_ERROR');
+  });
+
+  await t.test('7. Registration with common weak password is rejected', async () => {
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: `weak-pass-${Date.now()}@test.edu`,
+        password: 'password1234',
+        role: 'student',
+        fullName: 'Weak Pass'
+      })
+    });
+
+    assert.equal(res.status, 400, 'Common weak password must be rejected with 400');
+    const data = await res.json();
+    assert.equal(data.error, 'WEAK_PASSWORD');
+  });
 });

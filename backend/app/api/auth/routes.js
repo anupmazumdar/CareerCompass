@@ -35,8 +35,15 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Role must be student or recruiter' });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Password must be at least 8 characters' });
+    if (password.length < 12) {
+      return res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Password must be at least 12 characters' });
+    }
+
+    const COMMON_WEAK_PASSWORDS = [
+      'password1234', '123456789012', 'qwertyuiop12', 'admin12345678', 'welcome12345'
+    ];
+    if (COMMON_WEAK_PASSWORDS.includes(password.toLowerCase())) {
+      return res.status(400).json({ success: false, error: 'WEAK_PASSWORD', message: 'This password is too common or easily guessed. Please choose a stronger password.' });
     }
 
     const existing = await userRepo.findByEmail(email);
@@ -207,7 +214,7 @@ router.post('/login', async (req, res, next) => {
 router.post('/refresh', handleRefreshToken);
 
 // POST /api/auth/logout
-router.post('/logout', authenticateToken, handleLogout);
+router.post('/logout', handleLogout);
 
 // GET /api/auth/me
 router.get('/me', authenticateToken, async (req, res, next) => {
