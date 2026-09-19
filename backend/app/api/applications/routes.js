@@ -10,13 +10,55 @@ const recruiterRepo = require('../../repositories/recruiterRepository');
 const matchingEngine = require('../../ai/matching_engine/matchingEngine');
 const db = require('../../core/database/connection');
 const { authenticateToken } = require('../../core/authentication/auth');
-const { requireRole } = require('../../core/authorization/rbac');
+const { requireRole, normalizeRole } = require('../../core/authorization/rbac');
 const { validate } = require('../../middleware/validate');
 const {
   createApplicationSchema,
   updateStatusSchema,
   addNoteSchema
 } = require('../../schemas/applicationSchemas');
+
+/**
+ * Authoritative access check helper for applications.
+ * Enforces explicit ownership for students, verified company-level ownership for recruiters,
+ * and universal oversight for admins.
+ * Crucially: Applications with job_id = null cannot be accessed by recruiters.
+ */
+async function canAccessApplication(application, user) {
+  if (!application || !user) return false;
+  const role = user.normalizedRole || normalizeRole(user.role);
+
+  if (role === 'admin') {
+    return true;
+  }
+
+  if (role === 'student') {
+    const student = await studentRepo.findByUserId(user.userId);
+    return Boolean(student && application.student_id === student.id);
+  }
+
+  if (role === 'recruiter') {
+    const recruiter = await recruiterRepo.findByUserId(user.userId);
+    if (!recruiter || !recruiter.company_id) return false;
+
+    // Recruiter only has access if application is tied to their company's job or verified company opportunity
+    if (application.job_id) {
+      const job = await jobRepo.findById(application.job_id);
+      return Boolean(job && job.company_id === recruiter.company_id);
+    }
+    if (application.opportunity_id) {
+      const opp = await opportunityRepo.findById(application.opportunity_id);
+      if (opp && opp.company_id && opp.company_id === recruiter.company_id) {
+        return true;
+      }
+      return false;
+    }
+    // If job_id is null and no company-matched opportunity, recruiter has NO access to private/external applications
+    return false;
+  }
+
+  return false;
+}
 
 // GET /api/applications/stats - Application analytics strip for student
 router.get('/stats', authenticateToken, requireRole('student'), async (req, res, next) => {
@@ -87,12 +129,24 @@ router.post('/', authenticateToken, requireRole('student'), validate(createAppli
     if (opportunityId) {
       opp = await opportunityRepo.findById(opportunityId);
       if (opp) {
+        if (opp.status === 'closed' || opp.status === 'archived') {
+          return res.status(400).json({ success: false, error: 'OPPORTUNITY_CLOSED', message: 'This opportunity is closed for applications' });
+        }
+        if (opp.deadline && new Date(opp.deadline) < new Date()) {
+          return res.status(400).json({ success: false, error: 'DEADLINE_PASSED', message: 'The application deadline for this opportunity has passed' });
+        }
         const matchResult = opportunityRepo.calculateMatchScore(fullStudentProfile, opp);
         computedMatchScore = matchResult.score;
       }
     } else if (jobId) {
       job = await jobRepo.findById(jobId);
       if (job) {
+        if (job.status === 'closed' || job.status === 'archived') {
+          return res.status(400).json({ success: false, error: 'JOB_CLOSED', message: 'This job is closed for applications' });
+        }
+        if (job.deadline && new Date(job.deadline) < new Date()) {
+          return res.status(400).json({ success: false, error: 'DEADLINE_PASSED', message: 'The application deadline for this job has passed' });
+        }
         const matchResult = await matchingEngine.computeMatch(fullStudentProfile, job);
         computedMatchScore = matchResult.final_score;
       }
@@ -133,11 +187,17 @@ router.post('/', authenticateToken, requireRole('student'), validate(createAppli
       });
     }
 
-    // Fetch primary resume version if none passed
+    // Enforce resume ownership (SECURITY: prevent IDOR/hijacking of another student's resume)
     let resumeVersionUsed = null;
     if (resumeId) {
-      const resume = await db.get('SELECT version_label FROM resumes WHERE id = ?', [resumeId]);
-      if (resume) resumeVersionUsed = resume.version_label;
+      const resume = await db.get('SELECT id, version_label, student_id FROM resumes WHERE id = ?', [resumeId]);
+      if (!resume) {
+        return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Resume not found' });
+      }
+      if (resume.student_id !== student.id) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You are not authorized to use this resume' });
+      }
+      resumeVersionUsed = resume.version_label;
     } else {
       const primary = await db.get(
         'SELECT id, version_label FROM resumes WHERE student_id = ? ORDER BY is_primary DESC, created_at DESC LIMIT 1',
@@ -180,19 +240,9 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
     }
 
-    if (req.user.role === 'student') {
-      const student = await studentRepo.findByUserId(req.user.userId);
-      if (application.student_id !== student?.id) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
-      }
-    } else if (req.user.role === 'recruiter' || req.user.role === 'employer') {
-      const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-      if (application.job_id) {
-        const job = await jobRepo.findById(application.job_id);
-        if (job?.company_id !== recruiter?.company_id) {
-          return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
-        }
-      }
+    const hasAccess = await canAccessApplication(application, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
     }
 
     const history = await appRepo.getStatusHistory(application.id);
@@ -221,29 +271,9 @@ router.patch('/:id/status', authenticateToken, validate(updateStatusSchema), asy
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
     }
 
-    // ORIGINAL VULNERABILITY:
-    //   PATCH /:id/status only checked ownership when req.user.role === 'student'.
-    //   There was no check verifying that a recruiter/employer caller's company owns
-    //   the job tied to this application. Consequently, any authenticated recruiter
-    //   could modify another company's applicant records (IDOR / broken object authorization).
-    //
-    // FIX:
-    //   Add company ownership verification matching GET /:id: lookup recruiter profile,
-    //   fetch job tied to application.job_id, and reject with 403 Forbidden if job.company_id
-    //   does not match recruiter.company_id.
-    if (req.user.role === 'student') {
-      const student = await studentRepo.findByUserId(req.user.userId);
-      if (application.student_id !== student?.id) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
-      }
-    } else if (req.user.role === 'recruiter' || req.user.role === 'employer') {
-      const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-      if (application.job_id) {
-        const job = await jobRepo.findById(application.job_id);
-        if (job?.company_id !== recruiter?.company_id) {
-          return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
-        }
-      }
+    const hasAccess = await canAccessApplication(application, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
     }
 
     const updated = await appRepo.updateApplication(application.id, {
@@ -342,11 +372,9 @@ router.get('/:id/notes', authenticateToken, async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
     }
 
-    if (req.user.role === 'student') {
-      const student = await studentRepo.findByUserId(req.user.userId);
-      if (application.student_id !== student?.id) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
-      }
+    const hasAccess = await canAccessApplication(application, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
     }
 
     const notes = await appRepo.getNotes(application.id);
@@ -356,7 +384,7 @@ router.get('/:id/notes', authenticateToken, async (req, res, next) => {
   }
 });
 
-// DELETE /api/applications/:id/notes/:noteId - Delete note
+// DELETE /api/applications/:id/notes/:noteId - Delete note (verifying BOTH application and note ownership)
 router.delete('/:id/notes/:noteId', authenticateToken, requireRole('student'), async (req, res, next) => {
   try {
     const student = await studentRepo.findByUserId(req.user.userId);
@@ -364,7 +392,23 @@ router.delete('/:id/notes/:noteId', authenticateToken, requireRole('student'), a
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Student profile not found' });
     }
 
-    await appRepo.deleteNote(req.params.noteId, student.id);
+    const application = await appRepo.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
+    }
+    if (application.student_id !== student.id) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
+    }
+
+    const note = await db.get('SELECT * FROM application_notes WHERE id = ?', [req.params.noteId]);
+    if (!note) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Note not found' });
+    }
+    if (note.application_id !== application.id || note.student_id !== student.id) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Note does not belong to this application' });
+    }
+
+    await appRepo.deleteNote(req.params.noteId, student.id, application.id);
     return res.json({ success: true, message: 'Note deleted successfully' });
   } catch (err) {
     next(err);
@@ -404,7 +448,17 @@ router.delete('/:id', authenticateToken, requireRole('student'), async (req, res
 // GET /api/applications/:id/history - Immutable audit history
 router.get('/:id/history', authenticateToken, async (req, res, next) => {
   try {
-    const history = await appRepo.getStatusHistory(req.params.id);
+    const application = await appRepo.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Application not found' });
+    }
+
+    const hasAccess = await canAccessApplication(application, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied' });
+    }
+
+    const history = await appRepo.getStatusHistory(application.id);
     return res.json({ success: true, data: history });
   } catch (err) {
     next(err);

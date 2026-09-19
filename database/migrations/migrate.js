@@ -105,6 +105,8 @@ async function applyIncrementalMigrations(db) {
       );
       CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
       CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_apps_student_opp ON applications(student_id, opportunity_id) WHERE opportunity_id IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_apps_student_job ON applications(student_id, job_id) WHERE job_id IS NOT NULL;
     `, (err) => {
       if (err) return reject(err);
       resolve();

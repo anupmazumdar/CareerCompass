@@ -64,8 +64,12 @@ const corsMiddleware = cors({
       return callback(null, true);
     }
 
-    // Allow localhost for local development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    // Allow loopback origin strictly in non-production, or if explicitly configured in allowedOrigins
+    const isLoopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    if (isLoopback) {
+      if (process.env.NODE_ENV === 'production' && !config.cors.allowedOrigins.includes(origin)) {
+        return callback(new Error(`CORS policy rejection: Loopback origin ${origin} not permitted in production`));
+      }
       return callback(null, true);
     }
 
@@ -75,8 +79,8 @@ const corsMiddleware = cors({
       return callback(null, true);
     }
 
-    // Reject all other origins
-    return callback(new Error(`CORS policy rejection: Origin ${origin} not permitted`));
+    // Reject all other origins (do not reflect in Access-Control-Allow-Origin)
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -134,6 +138,32 @@ const sanitizeMiddleware = [
   hpp()
 ];
 
+// 5. CSRF Defense for State-Changing Requests
+function validateCsrfOrigin(req, res, next) {
+  const method = req.method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return next();
+  }
+
+  const origin = req.headers['origin'];
+  if (origin) {
+    const isAllowedOrigin = config.cors.allowedOrigins.includes(origin);
+    const isProjectVercel = PROJECT_VERCEL_PREVIEW_RE.test(origin);
+    const isLoopback = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const allowLoopback = isLoopback && (process.env.NODE_ENV !== 'production' || isAllowedOrigin);
+
+    if (!isAllowedOrigin && !isProjectVercel && !allowLoopback) {
+      return res.status(403).json({
+        success: false,
+        error: 'CSRF_REJECTED',
+        message: 'Cross-origin request blocked by CSRF protection policy.'
+      });
+    }
+  }
+
+  next();
+}
+
 module.exports = {
   helmetMiddleware,
   corsMiddleware,
@@ -142,5 +172,6 @@ module.exports = {
   aiRateLimiter,
   adminRateLimiter,
   opportunityLimiter,
-  sanitizeMiddleware
+  sanitizeMiddleware,
+  validateCsrfOrigin
 };

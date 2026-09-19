@@ -6,7 +6,7 @@ const jobRepo = require('../../repositories/jobRepository');
 const recruiterRepo = require('../../repositories/recruiterRepository');
 const appRepo = require('../../repositories/applicationRepository');
 const { authenticateToken } = require('../../core/authentication/auth');
-const { requireRole } = require('../../core/authorization/rbac');
+const { requireRole, normalizeRole } = require('../../core/authorization/rbac');
 
 const studentRepo = require('../../repositories/studentRepository');
 const matchingEngine = require('../../ai/matching_engine/matchingEngine');
@@ -152,8 +152,9 @@ router.post('/', authenticateToken, requireRole('recruiter', 'admin'), async (re
   try {
     let companyId = null;
     let recruiterProfileId = null;
+    const role = req.user.normalizedRole || normalizeRole(req.user.role);
 
-    if (req.user.role === 'recruiter') {
+    if (role === 'recruiter') {
       const recruiter = await recruiterRepo.findByUserId(req.user.userId);
       if (!recruiter || !recruiter.company_id) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You must be associated with a company to post jobs' });
@@ -212,10 +213,11 @@ router.put('/:id', authenticateToken, requireRole('recruiter', 'admin'), async (
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Job not found' });
     }
 
-    if (req.user.role === 'recruiter') {
+    const role = req.user.normalizedRole || normalizeRole(req.user.role);
+    if (role === 'recruiter') {
       const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-      if (job.created_by_recruiter_id !== recruiter.id) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You can only edit your own job postings' });
+      if (!recruiter || (job.created_by_recruiter_id !== recruiter.id && job.company_id !== recruiter.company_id)) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You can only edit your own company job postings' });
       }
     }
 
@@ -234,10 +236,11 @@ router.delete('/:id', authenticateToken, requireRole('recruiter', 'admin'), asyn
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Job not found' });
     }
 
-    if (req.user.role === 'recruiter') {
+    const role = req.user.normalizedRole || normalizeRole(req.user.role);
+    if (role === 'recruiter') {
       const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-      if (job.created_by_recruiter_id !== recruiter.id) {
-        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You can only delete your own job postings' });
+      if (!recruiter || (job.created_by_recruiter_id !== recruiter.id && job.company_id !== recruiter.company_id)) {
+        return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You can only delete your own company job postings' });
       }
     }
 
@@ -256,9 +259,10 @@ router.get('/:id/applications', authenticateToken, requireRole('recruiter', 'adm
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Job not found' });
     }
 
-    if (req.user.role === 'recruiter') {
+    const role = req.user.normalizedRole || normalizeRole(req.user.role);
+    if (role === 'recruiter') {
       const recruiter = await recruiterRepo.findByUserId(req.user.userId);
-      if (job.created_by_recruiter_id !== recruiter.id && job.company_id !== recruiter.company_id) {
+      if (!recruiter || job.company_id !== recruiter.company_id) {
         return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'You can only view applicants for your company jobs' });
       }
     }

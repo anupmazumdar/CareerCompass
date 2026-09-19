@@ -10,23 +10,24 @@ dotenv.config({ path: envPath });
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL_ENV);
+const jwtSecret = process.env.JWT_SECRET;
 
-// Fail-fast in production if secrets are missing or insecure
-// In serverless cloud deployments (e.g. Vercel preview/demo), fall back to a 32+ byte key with a warning instead of crashing the function
-const DEFAULT_SERVERLESS_SECRET = 'careercompass_serverless_production_fallback_key_min_32_bytes';
-let jwtSecret = process.env.JWT_SECRET;
+function validateProductionSecrets(env = process.env) {
+  const isProd = (env.NODE_ENV || '').toLowerCase() === 'production';
+  if (!isProd) return true;
 
-if (isProduction) {
-  if (!jwtSecret || jwtSecret.includes('default_') || jwtSecret.length < 32) {
-    if (isServerless) {
-      console.warn('⚠️ WARNING: JWT_SECRET not configured in serverless environment variables. Using safe serverless fallback key.');
-      jwtSecret = DEFAULT_SERVERLESS_SECRET;
-    } else {
-      throw new Error(
-        'FATAL SECURITY CONFIGURATION: In production, JWT_SECRET must be explicitly set to a cryptographically secure key of at least 32 characters.'
-      );
-    }
+  const secret = env.JWT_SECRET;
+  if (!secret || secret.includes('default_') || secret.length < 32) {
+    throw new Error(
+      'CRITICAL SECURITY CONFIGURATION ERROR: In production, JWT_SECRET must be explicitly set to a cryptographically secure key of at least 32 characters.'
+    );
   }
+  return true;
+}
+
+// Fail-fast on module initialization if production environment has invalid secrets
+if (isProduction) {
+  validateProductionSecrets(process.env);
 }
 
 module.exports = {
@@ -54,6 +55,7 @@ module.exports = {
       process.env.ALLOWED_ORIGINS ||
       'http://localhost:3000,http://localhost:3001,https://anupmazumdar-ai-recruitment-agent.vercel.app,https://career-compass-rose-five.vercel.app'
     ).split(',')
-  }
+  },
+  validateProductionSecrets
 };
 

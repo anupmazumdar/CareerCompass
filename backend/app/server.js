@@ -9,8 +9,10 @@ const {
   corsMiddleware,
   globalRateLimiter,
   authRateLimiter,
+  aiRateLimiter,
   adminRateLimiter,
-  sanitizeMiddleware
+  sanitizeMiddleware,
+  validateCsrfOrigin
 } = require('./core/security/security');
 const cookieParser = require('cookie-parser');
 const { logger, morganMiddleware } = require('./core/logging/logger');
@@ -47,10 +49,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Sanitize middleware (XSS, HPP, NoSQL)
 sanitizeMiddleware.forEach((m) => app.use(m));
 
+// CSRF Defense for cross-origin state-changing mutations
+app.use(validateCsrfOrigin);
+
 // Rate limiters
 app.use(globalRateLimiter);
 app.use('/api/auth', authRateLimiter);
 app.use('/api/admin', adminRateLimiter);
+app.use('/api/ai', aiRateLimiter);
+app.use('/api/resumes/analyze', aiRateLimiter);
 
 // 2. Health & Diagnostic Endpoints
 app.get('/api/health', (req, res) => {

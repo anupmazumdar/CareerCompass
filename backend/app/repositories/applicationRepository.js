@@ -255,7 +255,13 @@ class ApplicationRepository {
     );
   }
 
-  async deleteNote(noteId, studentId) {
+  async deleteNote(noteId, studentId, applicationId = null) {
+    if (applicationId) {
+      return db.run(
+        `DELETE FROM application_notes WHERE id = ? AND student_id = ? AND application_id = ?`,
+        [noteId, studentId, applicationId]
+      );
+    }
     return db.run(
       `DELETE FROM application_notes WHERE id = ? AND student_id = ?`,
       [noteId, studentId]

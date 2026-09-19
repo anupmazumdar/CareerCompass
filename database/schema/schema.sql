@@ -368,6 +368,8 @@ CREATE INDEX IF NOT EXISTS idx_applications_job ON applications(job_id);
 CREATE INDEX IF NOT EXISTS idx_applications_student ON applications(student_id);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
 CREATE INDEX IF NOT EXISTS idx_match_scores_student_job ON match_scores(student_id, job_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_apps_student_opp ON applications(student_id, opportunity_id) WHERE opportunity_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_apps_student_job ON applications(student_id, job_id) WHERE job_id IS NOT NULL;
 
 -- ============================================================
 -- Serverless Token Persistence (Fix for in-process memory stores)

@@ -270,8 +270,11 @@ class StudentRepository {
   }
 
   async setDefaultResume(studentId, resumeId) {
+    const target = await db.get('SELECT id FROM resumes WHERE id = ? AND student_id = ?', [resumeId, studentId]);
+    if (!target) return null;
     await db.run('UPDATE resumes SET is_primary = 0 WHERE student_id = ?', [studentId]);
-    return db.run('UPDATE resumes SET is_primary = 1 WHERE id = ? AND student_id = ?', [resumeId, studentId]);
+    await db.run('UPDATE resumes SET is_primary = 1 WHERE id = ? AND student_id = ?', [resumeId, studentId]);
+    return target;
   }
 
   // Student Goals

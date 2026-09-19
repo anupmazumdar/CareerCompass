@@ -17,8 +17,11 @@ try {
 } catch (e) {
   console.warn('⚠️ mammoth not available:', e.message);
 }
+const path = require('path');
+const crypto = require('crypto');
 const db = require('../../core/database/connection');
 const { authenticateToken } = require('../../core/authentication/auth');
+const { requireRole } = require('../../core/authorization/rbac');
 const resumeService = require('../../services/resume/resumeService');
 const studentRepo = require('../../repositories/studentRepository');
 
@@ -60,7 +63,7 @@ router.post('/analyze', authenticateToken, async (req, res, next) => {
 });
 
 // POST /api/resumes/upload - Secure PDF/DOCX Resume Upload with Magic-Byte Check & Skill Extraction
-router.post('/upload', authenticateToken, upload.single('resume'), async (req, res, next) => {
+router.post('/upload', authenticateToken, requireRole('student'), upload.single('resume'), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -72,7 +75,17 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
 
     const { originalname, mimetype, size, buffer } = req.file;
 
-    // 1. Double Validation: MIME Type + Magic Byte Inspection
+    // 1. Extension & Path Safety Check
+    const ext = path.extname(originalname || '').toLowerCase();
+    if (!['.pdf', '.docx'].includes(ext)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_FILE_EXTENSION',
+        message: 'Security check failed: Only .pdf and .docx file extensions are allowed.'
+      });
+    }
+
+    // 2. Double Validation: MIME Type + Magic Byte Inspection
     const isValidSignature = validateFileMagicBytes(buffer, mimetype);
     if (!isValidSignature) {
       return res.status(400).json({
@@ -134,41 +147,49 @@ router.post('/upload', authenticateToken, upload.single('resume'), async (req, r
 
     // 5. Link to Student Profile
     const studentProfile = await studentRepo.findByUserId(req.user.userId);
-    let resumeId = null;
+    if (!studentProfile) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Student profile not found'
+      });
+    }
 
-    if (studentProfile) {
-      // Check maximum 3 resumes
-      const existingResumes = await db.all('SELECT id, is_primary FROM resumes WHERE student_id = ?', [studentProfile.id]);
-      if (existingResumes.length >= 3) {
-        return res.status(400).json({
-          success: false,
-          error: 'LIMIT_REACHED',
-          message: 'Maximum 3 resume versions allowed. Delete an existing version to upload a new one.'
-        });
-      }
+    // Check maximum 3 resumes
+    const existingResumes = await db.all('SELECT id, is_primary FROM resumes WHERE student_id = ?', [studentProfile.id]);
+    if (existingResumes.length >= 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'LIMIT_REACHED',
+        message: 'Maximum 3 resume versions allowed. Delete an existing version to upload a new one.'
+      });
+    }
 
-      const versionLabel = req.body.version_label || req.body.versionLabel || `v${existingResumes.length + 1}`;
-      const shouldBePrimary = existingResumes.length === 0 || req.body.is_primary === 'true' || req.body.is_primary === true;
+    const versionLabel = req.body.version_label || req.body.versionLabel || `v${existingResumes.length + 1}`;
+    const shouldBePrimary = existingResumes.length === 0 || req.body.is_primary === 'true' || req.body.is_primary === true;
 
-      if (shouldBePrimary && existingResumes.length > 0) {
-        await db.run('UPDATE resumes SET is_primary = 0 WHERE student_id = ?', [studentProfile.id]);
-      }
+    if (shouldBePrimary && existingResumes.length > 0) {
+      await db.run('UPDATE resumes SET is_primary = 0 WHERE student_id = ?', [studentProfile.id]);
+    }
 
-      const saveRes = await db.run(
-        `INSERT INTO resumes (student_id, file_name, file_path, mime_type, file_size, raw_text, version_label, is_primary)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [studentProfile.id, originalname, `memory://uploads/${Date.now()}_${originalname}`, mimetype, size, extractedText.slice(0, 8000), versionLabel, shouldBePrimary ? 1 : 0]
+    const safeFileId = `${crypto.randomUUID()}${ext}`;
+    const safeFilePath = `uploads/resumes/${safeFileId}`;
+    const sanitizedFileName = path.basename(originalname).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+
+    const saveRes = await db.run(
+      `INSERT INTO resumes (student_id, file_name, file_path, mime_type, file_size, raw_text, version_label, is_primary)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [studentProfile.id, sanitizedFileName, safeFilePath, mimetype, size, extractedText.slice(0, 8000), versionLabel, shouldBePrimary ? 1 : 0]
+    );
+    const resumeId = saveRes.lastID;
+
+    // Also record in resume_analysis table
+    if (resumeId) {
+      await db.run(
+        `INSERT OR REPLACE INTO resume_analysis (resume_id, ats_score, detected_skills, analyzed_at)
+         VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+        [resumeId, analysis.atsScore || 70, JSON.stringify(detectedSkills.map(s => s.name))]
       );
-      resumeId = saveRes.lastID;
-
-      // Also record in resume_analysis table
-      if (resumeId) {
-        await db.run(
-          `INSERT OR REPLACE INTO resume_analysis (resume_id, ats_score, detected_skills, analyzed_at)
-           VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-          [resumeId, analysis.atsScore || 70, JSON.stringify(detectedSkills.map(s => s.name))]
-        );
-      }
     }
 
     return res.status(201).json({

@@ -4,7 +4,13 @@ const express = require('express');
 const router = express.Router();
 const studentRepo = require('../../repositories/studentRepository');
 const { authenticateToken } = require('../../core/authentication/auth');
-const { requireRole, verifyCandidateAccess } = require('../../core/authorization/rbac');
+const { requireRole, verifyCandidateAccess, normalizeRole } = require('../../core/authorization/rbac');
+const {
+  toOwnStudentProfile,
+  toAdminStudent,
+  toRecruiterCandidate,
+  toPublicStudent
+} = require('../../serializers/studentSerializer');
 const { validate } = require('../../middleware/validate');
 const {
   personalProfileSchema,
@@ -244,7 +250,10 @@ router.post('/me/resumes', authenticateToken, requireRole('student'), validate(r
 router.put('/me/resumes/:id/primary', authenticateToken, requireRole('student'), async (req, res, next) => {
   try {
     const studentId = await getStudentProfileId(req.user.userId);
-    await studentRepo.setDefaultResume(studentId, req.params.id);
+    const updated = await studentRepo.setDefaultResume(studentId, req.params.id);
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Resume not found or does not belong to you' });
+    }
     const resumes = await studentRepo.getResumes(studentId);
     return res.json({ success: true, data: resumes, message: 'Primary resume updated' });
   } catch (err) {
@@ -308,14 +317,29 @@ router.delete('/me/goals/:id', authenticateToken, requireRole('student'), async 
   }
 });
 
-// GET /api/students/:id (Protected by OLAC / IDOR defense)
+// GET /api/students/:id (Protected by OLAC / IDOR defense & candidate PII serializer)
 router.get('/:id', authenticateToken, verifyCandidateAccess, async (req, res, next) => {
   try {
     const fullProfile = await studentRepo.getFullProfile(req.params.id);
     if (!fullProfile) {
       return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Candidate not found' });
     }
-    return res.json({ success: true, data: fullProfile });
+
+    const role = req.user.normalizedRole || normalizeRole(req.user.role);
+    if (role === 'admin') {
+      return res.json({ success: true, data: toAdminStudent(fullProfile) });
+    }
+
+    const student = await studentRepo.findByUserId(req.user.userId);
+    if (student && student.id === fullProfile.id) {
+      return res.json({ success: true, data: toOwnStudentProfile(fullProfile) });
+    }
+
+    if (role === 'recruiter') {
+      return res.json({ success: true, data: toRecruiterCandidate(fullProfile) });
+    }
+
+    return res.json({ success: true, data: toPublicStudent(fullProfile) });
   } catch (err) {
     next(err);
   }

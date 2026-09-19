@@ -14,7 +14,7 @@ const ROLE_ALIASES = {
 function normalizeRole(role) {
   const r = String(role || '').toLowerCase();
   if (ROLE_ALIASES.student.includes(r)) return 'student';
-  if (ROLE_ALIASES.employer.includes(r)) return 'employer';
+  if (ROLE_ALIASES.recruiter.includes(r)) return 'recruiter';
   if (ROLE_ALIASES.admin.includes(r)) return 'admin';
   return r;
 }
@@ -99,7 +99,7 @@ async function verifyCandidateAccess(req, res, next) {
     //
     // FIX: Fetch the company row and assert verification_status = 'verified' before
     // allowing access. Unverified / pending companies cannot access candidate data.
-    if (normalizedUserRole === 'employer') {
+    if (normalizedUserRole === 'recruiter' || normalizedUserRole === 'employer') {
       const recruiter = await db.get(
         `SELECT rp.company_id, c.verification_status
          FROM recruiter_profiles rp
@@ -150,6 +150,7 @@ async function verifyCandidateAccess(req, res, next) {
 }
 
 module.exports = {
+  normalizeRole,
   requireRole,
   verifyCandidateAccess
 };

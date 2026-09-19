@@ -123,12 +123,16 @@ async function authenticateToken(req, res, next) {
       if (revoked || tokenBlacklist.has(decoded.jti)) {
         return res.status(401).json({
           success: false,
-          error: 'UNAUTHORIZED',
+          error: 'TOKEN_REVOKED',
           message: 'Token has been revoked'
         });
       }
     }
 
+    decoded.rawRole = decoded.role || decoded.userType;
+    const { normalizeRole } = require('../authorization/rbac');
+    decoded.normalizedRole = normalizeRole(decoded.rawRole);
+    decoded.role = decoded.normalizedRole;
     req.user = decoded;
     return next();
   } catch (err) {
