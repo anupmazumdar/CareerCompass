@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { api } from '../../api/client';
 import {
   setStoredAuth,
   getStoredAuth,
@@ -18,8 +19,6 @@ jest.mock('../../api/client', () => ({
     get: jest.fn()
   }
 }));
-
-import { api } from '../../api/client';
 
 describe('AuthContext - Security & In-Memory Token Handling', () => {
   beforeEach(() => {
@@ -91,17 +90,17 @@ describe('AuthContext - Security & In-Memory Token Handling', () => {
       );
     }
 
-    const { getByTestId } = render(
+    render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>
     );
 
     await waitFor(() => {
-      expect(getByTestId('auth-status').textContent).toBe('Authenticated');
-      expect(getByTestId('user-email').textContent).toBe('alex@example.com');
+      expect(screen.getByTestId('auth-status').textContent).toBe('Authenticated');
     });
 
+    expect(screen.getByTestId('user-email').textContent).toBe('alex@example.com');
     expect(getStoredToken()).toBe('new.refreshed.jwt');
     expect(localStorage.getItem(AUTH_STORAGE_KEY)).toBeNull();
   });
@@ -115,14 +114,14 @@ describe('AuthContext - Security & In-Memory Token Handling', () => {
       return <div data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Unauthenticated'}</div>;
     }
 
-    const { getByTestId } = render(
+    render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>
     );
 
     await waitFor(() => {
-      expect(getByTestId('auth-status').textContent).toBe('Unauthenticated');
+      expect(screen.getByTestId('auth-status').textContent).toBe('Unauthenticated');
     });
 
     expect(getStoredToken()).toBeNull();
